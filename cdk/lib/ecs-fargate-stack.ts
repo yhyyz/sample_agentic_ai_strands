@@ -60,7 +60,7 @@ export class EcsFargateStack extends cdk.Stack {
 
     // 2. Create DynamoDB table for user configurations
     const userConfigTable = new dynamodb.Table(this, `${prefix}-user-config-table`, {
-      tableName: `${prefix}_user_config_table`,
+      // tableName: `${prefix}_user_config_table`,
       partitionKey: {
         name: 'userId',
         type: dynamodb.AttributeType.STRING,
@@ -547,12 +547,12 @@ export class EcsFargateStack extends cdk.Stack {
         MCP_SERVICE_HOST: '0.0.0.0',
         MCP_SERVICE_PORT: '7002',
         USE_HTTPS: '0',
-        ddb_table:`${prefix}_user_config_table`,
+        ddb_table:userConfigTable.tableName,
         LANGFUSE_HOST:process.env.LANGFUSE_HOST||'',
-        AWS_ACCESS_KEY_ID:process.env.AWS_ACCESS_KEY_ID || "",
-        AWS_SECRET_ACCESS_KEY:process.env.AWS_SECRET_ACCESS_KEY || "",
-        OPENAI_BASE_URL:process.env.OPENAI_BASE_URL ||"",
-        OPENAI_API_KEY:process.env.OPENAI_API_KEY||"",
+        // AWS_ACCESS_KEY_ID:process.env.AWS_ACCESS_KEY_ID || "",
+        // AWS_SECRET_ACCESS_KEY:process.env.AWS_SECRET_ACCESS_KEY || "",
+        // OPENAI_BASE_URL:process.env.OPENAI_BASE_URL ||"",
+        // OPENAI_API_KEY:process.env.OPENAI_API_KEY||"",
         LANGFUSE_PUBLIC_KEY:process.env.LANGFUSE_PUBLIC_KEY || "",
         LANGFUSE_SECRET_KEY:process.env.LANGFUSE_SECRET_KEY || "",
         // Mem0 configuration
@@ -569,10 +569,10 @@ export class EcsFargateStack extends cdk.Stack {
         // Database credentials
         POSTGRESQL_USER: ecs.Secret.fromSecretsManager(dbCredentialsSecret,'username'),
         POSTGRESQL_PASSWORD: ecs.Secret.fromSecretsManager(dbCredentialsSecret,'password'),
-        // AWS_ACCESS_KEY_ID: ecs.Secret.fromSecretsManager(awsCredentialsSecret, 'AccessKeyId'),
-        // AWS_SECRET_ACCESS_KEY: ecs.Secret.fromSecretsManager(awsCredentialsSecret, 'SecretAccessKey'),
-        // STRANDS_API_KEY: ecs.Secret.fromSecretsManager(strandsApiKeySecret),
-        // STRANDS_API_BASE: ecs.Secret.fromSecretsManager(strandsApiBaseSecret),
+        AWS_ACCESS_KEY_ID: ecs.Secret.fromSecretsManager(awsCredentialsSecret, 'AccessKeyId'),
+        AWS_SECRET_ACCESS_KEY: ecs.Secret.fromSecretsManager(awsCredentialsSecret, 'SecretAccessKey'),
+        OPENAI_API_KEY: ecs.Secret.fromSecretsManager(strandsApiKeySecret),
+        OPENAI_BASE_URL: ecs.Secret.fromSecretsManager(strandsApiBaseSecret),
         // LANGFUSE_PUBLIC_KEY: ecs.Secret.fromSecretsManager(langfusePublicKeySecret),
         // LANGFUSE_SECRET_KEY: ecs.Secret.fromSecretsManager(langfuseSecretKeySecret),
         // LANGFUSE_HOST:ecs.Secret.fromSecretsManager(langfuseHostSecret),
