@@ -102,9 +102,10 @@ STRANDS_MODEL_PROVIDER=bedrock
 
 
 # 如果在中国区，使用openai兼容接口的模型，需要如下Strands 配置
-STRANDS_API_KEY=your-model-provider-key
-STRANDS_API_BASE=your-model-provider-base-url(例如https://api.siliconflow.cn)
+OPENAI_API_KEY=your-model-provider-key
+OPENAI_BASE_URL=your-model-provider-base-url(例如https://api.siliconflow.cn)
 STRANDS_MODEL_PROVIDER=openai
+AWS_REGION=cn-northwest-1(方案部署区，如果是北京区用cn-north-1)
 
 # Langfuse 配置 (可选)
 LANGFUSE_PUBLIC_KEY=your-public-key
@@ -124,7 +125,9 @@ bash cdk-build-and-deploy.sh
 ```
 
 ### 步骤 5: 更新服务
-
+```bash
+bash update-ecs-services.sh
+```
 
 ## CDK 命令参考
 
