@@ -109,6 +109,7 @@ TOOL_SPEC = {
         "- history: Get memory history\n\n"
         "Note: Most operations require either user_id or agent_id to be specified. The tool will automatically "
         "attempt to retrieve relevant memories when user_id or agent_id is available."
+        "If the action property is one of 'store', 'list', or 'retrieve', then either a user_id or an agent_id must be provided"
     ),
     "inputSchema": {
         "json": {
@@ -145,12 +146,13 @@ TOOL_SPEC = {
                 },
             },
             "required": ["action"],
-            "allOf": [
-                {
-                    "if": {"properties": {"action": {"enum": ["store", "list", "retrieve"]}}},
-                    "then": {"oneOf": [{"required": ["user_id"]}, {"required": ["agent_id"]}]},
-                }
-            ],
+            # Below will raise error in Bedrock converse api
+            # "allOf": [
+            #     {
+            #         "if": {"properties": {"action": {"enum": ["store", "list", "retrieve"]}}},
+            #         "then": {"oneOf": [{"required": ["user_id"]}, {"required": ["agent_id"]}]},
+            #     }
+            # ],
         }
     },
 }

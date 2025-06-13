@@ -149,37 +149,37 @@ echo "========================================="
 echo "从 .env 文件更新 Secrets Manager..."
 
 # 创建或更新 AWS 凭证
-# aws secretsmanager create-secret \
-#     --name "${PREFIX}/aws-credentials" \
-#     --description "AWS Access Credentials" \
-#     --secret-string "{\"AccessKeyId\":\"${AWS_ACCESS_KEY_ID}\",\"SecretAccessKey\":\"${AWS_SECRET_ACCESS_KEY}\"}" \
-#     --region $REGION 2>/dev/null || \
-# aws secretsmanager update-secret \
-#     --secret-id "${PREFIX}/aws-credentials" \
-#     --secret-string "{\"AccessKeyId\":\"${AWS_ACCESS_KEY_ID}\",\"SecretAccessKey\":\"${AWS_SECRET_ACCESS_KEY}\"}" \
-#     --region $REGION
+aws secretsmanager create-secret \
+    --name "${PREFIX}/aws-credentials" \
+    --description "AWS Access Credentials" \
+    --secret-string "{\"AccessKeyId\":\"${AWS_ACCESS_KEY_ID}\",\"SecretAccessKey\":\"${AWS_SECRET_ACCESS_KEY}\"}" \
+    --region $REGION 2>/dev/null || \
+aws secretsmanager update-secret \
+    --secret-id "${PREFIX}/aws-credentials" \
+    --secret-string "{\"AccessKeyId\":\"${AWS_ACCESS_KEY_ID}\",\"SecretAccessKey\":\"${AWS_SECRET_ACCESS_KEY}\"}" \
+    --region $REGION
 
-# 创建或更新 Strands API Key
-# aws secretsmanager create-secret \
-#     --name "${PREFIX}/strands-api-key" \
-#     --description "Strands API Key" \
-#     --secret-string "${STRANDS_API_KEY}" \
-#     --region $REGION 2>/dev/null || \
-# aws secretsmanager update-secret \
-#     --secret-id "${PREFIX}/strands-api-key" \
-#     --secret-string "${STRANDS_API_KEY}" \
-#     --region $REGION
+# 创建或更新 OPENAI 兼容接口 API Key
+aws secretsmanager create-secret \
+    --name "${PREFIX}/strands-api-key" \
+    --description "Strands API Key" \
+    --secret-string "${OPENAI_API_KEY}" \
+    --region $REGION 2>/dev/null || \
+aws secretsmanager update-secret \
+    --secret-id "${PREFIX}/strands-api-key" \
+    --secret-string "${OPENAI_API_KEY}" \
+    --region $REGION
 
-# # 创建或更新 Strands API Base
-# aws secretsmanager create-secret \
-#     --name "${PREFIX}/strands-api-base" \
-#     --description "Strands API Base URL" \
-#     --secret-string "${STRANDS_API_BASE}" \
-#     --region $REGION 2>/dev/null || \
-# aws secretsmanager update-secret \
-#     --secret-id "${PREFIX}/strands-api-base" \
-#     --secret-string "${STRANDS_API_BASE}" \
-#     --region $REGION
+# 创建或更新 OPENAI 兼容接口 API Base
+aws secretsmanager create-secret \
+    --name "${PREFIX}/strands-api-base" \
+    --description "Strands API Base URL" \
+    --secret-string "${OPENAI_BASE_URL}" \
+    --region $REGION 2>/dev/null || \
+aws secretsmanager update-secret \
+    --secret-id "${PREFIX}/strands-api-base" \
+    --secret-string "${OPENAI_BASE_URL}" \
+    --region $REGION
 
 # 创建或更新 Langfuse 配置
 # aws secretsmanager create-secret \
