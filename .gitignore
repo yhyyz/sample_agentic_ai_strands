@@ -4,6 +4,7 @@ __pycache__/
 *$py.class
 .env.local
 .DS_Store
+cdk-outputs.env
 # C extensions
 *.so
 *.csv
