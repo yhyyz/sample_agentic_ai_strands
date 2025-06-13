@@ -52,8 +52,8 @@ class StrandsAgentClient(ChatClient):
         
         # Initialize Strands Agent
         self.model_provider = model_provider
-        self.api_key = api_key or os.environ.get('STRANDS_API_KEY') or os.environ.get('OPENAI_API_KEY')
-        self.api_base = api_base or os.environ.get('STRANDS_API_BASE')
+        self.api_key = api_key or os.environ.get('OPENAI_API_KEY')
+        self.api_base = api_base or os.environ.get('OPENAI_BASE_URL')
         
         # Initialize agent
         self.agent = None

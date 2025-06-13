@@ -36,19 +36,19 @@ echo "========================================="
 # 检查必需的环境变量
 MISSING_VARS=()
 
-# if [ -z "$AWS_ACCESS_KEY_ID" ]; then
-#     echo "❌ AWS_ACCESS_KEY_ID 未设置或为空"
-#     MISSING_VARS+=("AWS_ACCESS_KEY_ID")
-# else
-#     echo "✅ AWS_ACCESS_KEY_ID: ${AWS_ACCESS_KEY_ID:0:10}..."
-# fi
+if [ -z "$AWS_ACCESS_KEY_ID" ]; then
+    echo "❌ AWS_ACCESS_KEY_ID 未设置或为空"
+    MISSING_VARS+=("AWS_ACCESS_KEY_ID")
+else
+    echo "✅ AWS_ACCESS_KEY_ID: ${AWS_ACCESS_KEY_ID:0:10}..."
+fi
 
-# if [ -z "$AWS_SECRET_ACCESS_KEY" ]; then
-#     echo "❌ AWS_SECRET_ACCESS_KEY 未设置或为空"
-#     MISSING_VARS+=("AWS_SECRET_ACCESS_KEY")
-# else
-#     echo "✅ AWS_SECRET_ACCESS_KEY: ${AWS_SECRET_ACCESS_KEY:0:10}..."
-# fi
+if [ -z "$AWS_SECRET_ACCESS_KEY" ]; then
+    echo "❌ AWS_SECRET_ACCESS_KEY 未设置或为空"
+    MISSING_VARS+=("AWS_SECRET_ACCESS_KEY")
+else
+    echo "✅ AWS_SECRET_ACCESS_KEY: ${AWS_SECRET_ACCESS_KEY:0:10}..."
+fi
 
 # if [ -z "$API_KEY" ]; then
 #     echo "❌ API_KEY 未设置或为空"
@@ -57,18 +57,18 @@ MISSING_VARS=()
 #     echo "✅ API_KEY: ${API_KEY:0:10}..."
 # fi
 
-if [ -z "$STRANDS_API_KEY" ]; then
-    echo "❌ STRANDS_API_KEY 未设置或为空"
-    MISSING_VARS+=("STRANDS_API_KEY")
+if [ -z "$OPENAI_API_KEY" ]; then
+    echo "❌ OPENAI_API_KEY 未设置或为空"
+    MISSING_VARS+=("OPENAI_API_KEY")
 else
-    echo "✅ STRANDS_API_KEY: ${STRANDS_API_KEY:0:10}..."
+    echo "✅ OPENAI_API_KEY: ${OPENAI_API_KEY:0:10}..."
 fi
 
-if [ -z "$STRANDS_API_BASE" ]; then
-    echo "❌ STRANDS_API_BASE 未设置或为空"
-    MISSING_VARS+=("STRANDS_API_BASE")
+if [ -z "$OPENAI_BASE_URL" ]; then
+    echo "❌ OPENAI_BASE_URL 未设置或为空"
+    MISSING_VARS+=("OPENAI_BASE_URL")
 else
-    echo "✅ STRANDS_API_BASE: $STRANDS_API_BASE"
+    echo "✅ OPENAI_BASE_URL: $OPENAI_BASE_URL"
 fi
 
 # if [ -z "$LANGFUSE_HOST" ]; then
@@ -78,19 +78,19 @@ fi
 #     echo "✅ LANGFUSE_HOST: $LANGFUSE_HOST"
 # fi
 
-if [ -z "$LANGFUSE_PUBLIC_KEY" ]; then
-    echo "❌ LANGFUSE_PUBLIC_KEY 未设置或为空"
-    MISSING_VARS+=("LANGFUSE_PUBLIC_KEY")
-else
-    echo "✅ LANGFUSE_PUBLIC_KEY: ${LANGFUSE_PUBLIC_KEY:0:10}..."
-fi
+# if [ -z "$LANGFUSE_PUBLIC_KEY" ]; then
+#     echo "❌ LANGFUSE_PUBLIC_KEY 未设置或为空"
+#     MISSING_VARS+=("LANGFUSE_PUBLIC_KEY")
+# else
+#     echo "✅ LANGFUSE_PUBLIC_KEY: ${LANGFUSE_PUBLIC_KEY:0:10}..."
+# fi
 
-if [ -z "$LANGFUSE_SECRET_KEY" ]; then
-    echo "❌ LANGFUSE_SECRET_KEY 未设置或为空"
-    MISSING_VARS+=("LANGFUSE_SECRET_KEY")
-else
-    echo "✅ LANGFUSE_SECRET_KEY: ${LANGFUSE_SECRET_KEY:0:10}..."
-fi
+# if [ -z "$LANGFUSE_SECRET_KEY" ]; then
+#     echo "❌ LANGFUSE_SECRET_KEY 未设置或为空"
+#     MISSING_VARS+=("LANGFUSE_SECRET_KEY")
+# else
+#     echo "✅ LANGFUSE_SECRET_KEY: ${LANGFUSE_SECRET_KEY:0:10}..."
+# fi
 
 if [ ${#MISSING_VARS[@]} -gt 0 ]; then
     echo ""
@@ -111,19 +111,19 @@ echo "========================================="
 echo "更新 Secrets Manager"
 echo "========================================="
 
-# # 更新 AWS 凭证
-# echo "更新 AWS 凭证..."
-# aws secretsmanager update-secret \
-#     --secret-id "${PREFIX}/aws-credentials" \
-#     --secret-string "{\"AccessKeyId\":\"${AWS_ACCESS_KEY_ID}\",\"SecretAccessKey\":\"${AWS_SECRET_ACCESS_KEY}\"}" \
-#     --region $REGION || {
-#     echo "创建 AWS 凭证密钥..."
-#     aws secretsmanager create-secret \
-#         --name "${PREFIX}/aws-credentials" \
-#         --description "AWS Access Credentials" \
-#         --secret-string "{\"AccessKeyId\":\"${AWS_ACCESS_KEY_ID}\",\"SecretAccessKey\":\"${AWS_SECRET_ACCESS_KEY}\"}" \
-#         --region $REGION
-# }
+# 更新 AWS 凭证
+echo "更新 AWS 凭证..."
+aws secretsmanager update-secret \
+    --secret-id "${PREFIX}/aws-credentials" \
+    --secret-string "{\"AccessKeyId\":\"${AWS_ACCESS_KEY_ID}\",\"SecretAccessKey\":\"${AWS_SECRET_ACCESS_KEY}\"}" \
+    --region $REGION || {
+    echo "创建 AWS 凭证密钥..."
+    aws secretsmanager create-secret \
+        --name "${PREFIX}/aws-credentials" \
+        --description "AWS Access Credentials" \
+        --secret-string "{\"AccessKeyId\":\"${AWS_ACCESS_KEY_ID}\",\"SecretAccessKey\":\"${AWS_SECRET_ACCESS_KEY}\"}" \
+        --region $REGION
+}
 
 # 更新 API Key
 # echo "更新 API Key..."
@@ -141,32 +141,32 @@ echo "========================================="
 
 
 # 更新 Strands API Key
-# echo "更新 Strands API Key..."
-# aws secretsmanager update-secret \
-#     --secret-id "${PREFIX}/strands-api-key" \
-#     --secret-string "${STRANDS_API_KEY}" \
-#     --region $REGION || {
-#     echo "创建 Strands API Key 密钥..."
-#     aws secretsmanager create-secret \
-#         --name "${PREFIX}/strands-api-key" \
-#         --description "Strands API Key" \
-#         --secret-string "${STRANDS_API_KEY}" \
-#         --region $REGION
-# }
+echo "更新 Strands API Key..."
+aws secretsmanager update-secret \
+    --secret-id "${PREFIX}/strands-api-key" \
+    --secret-string "${OPENAI_API_KEY}" \
+    --region $REGION || {
+    echo "创建 Strands API Key 密钥..."
+    aws secretsmanager create-secret \
+        --name "${PREFIX}/strands-api-key" \
+        --description "Strands API Key" \
+        --secret-string "${OPENAI_API_KEY}" \
+        --region $REGION
+}
 
-# # 更新 Strands API Base
-# echo "更新 Strands API Base..."
-# aws secretsmanager update-secret \
-#     --secret-id "${PREFIX}/strands-api-base" \
-#     --secret-string "${STRANDS_API_BASE}" \
-#     --region $REGION || {
-#     echo "创建 Strands API Base 密钥..."
-#     aws secretsmanager create-secret \
-#         --name "${PREFIX}/strands-api-base" \
-#         --description "Strands API Base URL" \
-#         --secret-string "${STRANDS_API_BASE}" \
-#         --region $REGION
-# }
+# 更新 OPENAI Base URL
+echo "更新 OPENAI Base URL..."
+aws secretsmanager update-secret \
+    --secret-id "${PREFIX}/strands-api-base" \
+    --secret-string "${OPENAI_BASE_URL}" \
+    --region $REGION || {
+    echo "创建 OPENAI Base URL 密钥..."
+    aws secretsmanager create-secret \
+        --name "${PREFIX}/strands-api-base" \
+        --description "OPENAI Base URL" \
+        --secret-string "${OPENAI_BASE_URL}" \
+        --region $REGION
+}
 
 # 更新 Langfuse 配置
 # echo "更新 Langfuse Host..."
