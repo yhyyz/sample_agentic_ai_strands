@@ -1,0 +1,77 @@
+# Backend Dockerfile for FastAPI application - ARM64 optimized
+FROM --platform=linux/arm64 python:3.12-slim-bookworm
+COPY --from=ghcr.io/astral-sh/uv:latest /uv /uvx /bin/
+
+# Set working directory
+WORKDIR /app
+
+# Install system dependencies
+RUN apt-get update && apt-get install -y \
+    build-essential \
+    curl \
+    git \
+    nodejs \
+    npm \
+    && rm -rf /var/lib/apt/lists/*
+
+# Add build argument for China region support
+ARG USE_CHINA_MIRROR=false
+ARG PIP_INDEX_URL=https://pypi.org/simple
+
+# Configure pip mirrors for China region if needed
+RUN if [ "$USE_CHINA_MIRROR" = "true" ]; then \
+        echo "Configuring pip mirrors for China region..."; \
+        pip config set global.index-url https://pypi.tuna.tsinghua.edu.cn/simple && \
+        pip config set global.extra-index-url https://pypi.tuna.tsinghua.edu.cn/simple && \
+        pip config set global.trusted-host https://pypi.tuna.tsinghua.edu.cn; \
+    fi
+
+ENV UV_DEFAULT_INDEX=$PIP_INDEX_URL
+ENV UV_PYTHON_INSTALL_MIRROR=$PIP_INDEX_URL
+# Copy requirements
+COPY pyproject.toml ./
+COPY uv.lock ./
+
+# Install Python dependencies
+RUN pip install --no-cache-dir -e .
+# RUN uv sync 
+# RUN . .venv/bin/activate 
+
+# forkrepo，支持r1 reasoning content
+RUN pip install git+https://github.com/xiehust/sdk-python.git@gcr
+
+RUN git clone https://github.com/BochaAI/bocha-search-mcp.git
+# RUN pip install git+https://ghproxy.cn/https://github.com/xiehust/sdk-python.git
+# download mcp repo 
+RUN git clone https://github.com/aws-samples/aws-mcp-servers-samples -b main
+# RUN git clone https://ghproxy.cn/https://github.com/aws-samples/aws-mcp-servers-samples
+
+# 修改默认超时为120s
+RUN \
+export PYTHON_SITEPACKAGES=`python3 -c "import site; print(site.getsitepackages()[0])"`; \
+sed -i 's/\(self\._init_future\.result(timeout=\)30/\1120/g' ${PYTHON_SITEPACKAGES}/strands/tools/mcp/mcp_client.py
+
+# Copy source code
+COPY src/ ./src/
+COPY conf/ ./conf/
+COPY docs/ ./docs/
+
+# move to cn
+RUN cp ./conf/config_cn.json ./conf/config.json
+# Create certificates directory
+RUN mkdir -p certificates
+
+# Set environment variables
+ENV PYTHONPATH=/app
+ENV PYTHONUNBUFFERED=1
+
+# Expose port
+EXPOSE 7002
+
+# Health check
+HEALTHCHECK --interval=30s --timeout=30s --start-period=5s --retries=3 \
+    CMD curl -f http://localhost:7002/api/health || exit 1
+
+# Run the application
+# CMD ["python", "-m", "uvicorn", "src.main:app", "--host", "0.0.0.0", "--port", "7002"]
+CMD ["python", "src/main.py", "--mcp-conf","conf/config.json", "--user-conf","conf/user_mcp_config.json","--host", "0.0.0.0", "--port", "7002"]
