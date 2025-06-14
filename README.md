@@ -1,6 +1,4 @@
-# Strands Agents SDK 集成
-
-本文档描述了如何在此代理服务中使用 Strands Agents SDK 集成。
+# Agentic AI with Strands Agents SDK [English](./README.en.md)
 
 ## 1.概述
 
