@@ -10,7 +10,7 @@
 		},
 		{
 			"model_id": "deepseek-ai/DeepSeek-R1/wvvkzheh2i",
-			"model_name": "DeepSeek-R1-test"
+			"model_name": "DeepSeek-R1-0528"
 		},
 		{
 			"model_id": "Pro/deepseek-ai/DeepSeek-R1",
@@ -19,14 +19,6 @@
 		{
 			"model_id": "deepseek-ai/DeepSeek-R1",
 			"model_name": "DeepSeek-R1-free"
-		},
-		{
-			"model_id": "deepseek-r1-250528",
-			"model_name": "DeepSeek-R1-0528-ark"
-		},
-		{
-			"model_id": "deepseek-v3-250324",
-			"model_name": "deepseek-v3-250324-ark"
 		},
 		{
 			"model_id": "deepseek-reasoner",

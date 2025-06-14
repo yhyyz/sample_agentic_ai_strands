@@ -1,6 +1,20 @@
-# Backend Dockerfile for FastAPI application - ARM64 optimized
-FROM --platform=linux/arm64 python:3.12-slim-bookworm
-COPY --from=ghcr.io/astral-sh/uv:latest /uv /uvx /bin/
+# 首先定义变量(必须在任何 FROM 指令前定义)
+ARG USE_CHINA_MIRROR=false
+ARG PLATFROM=linux/arm64
+# 定义不同的 Python 基础镜像阶段
+FROM --platform=$PLATFROM python:3.12-slim-bookworm AS python-base-false
+FROM --platform=$PLATFROM mirror-docker.bosicloud.com/python:3.12-slim-bookworm AS python-base-true
+# 定义不同的 uv 工具源阶段
+FROM ghcr.io/astral-sh/uv:latest AS uv-source-false
+FROM mirror-docker.bosicloud.com/astral-sh/uv:latest AS uv-source-true
+# 基于 USE_CHINA_MIRROR 的值选择最终使用的 Python 基础镜像
+FROM python-base-${USE_CHINA_MIRROR} AS final
+# 重新定义 ARG 以便在 FROM 之后使用
+ARG USE_CHINA_MIRROR=false
+# 基于 USE_CHINA_MIRROR 的值从不同源复制 uv 工具
+COPY --from=uv-source-${USE_CHINA_MIRROR} /uv /uvx /bin/
+# 其他 Dockerfile 指令...
+RUN echo "Using China mirror: ${USE_CHINA_MIRROR}"
 
 # Set working directory
 WORKDIR /app
