@@ -83,7 +83,6 @@ class UserSession:
         self.mcp_clients = {}  # 用户特定的MCP客户端
         self.last_active = datetime.now()
         self.session_id = str(uuid.uuid4())
-        # self.lock = asyncio.Lock()  # 用于同步会话内的操作
 
     async def cleanup(self):
         """清理用户会话资源"""
