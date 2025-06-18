@@ -375,8 +375,24 @@ async def stop_stream(
     auth: HTTPAuthorizationCredentials = Security(security)
 ):
     """停止正在进行的模型输出流"""
-    # global active_streams
+    global active_streams
     logger.info(f"stopping request:{stream_id} in {active_streams}")
+    if not stream_id in active_streams:
+        # 如果不在当前的实例中，则直接remove ddb中的数据
+        try:
+            await delete_stream_id(stream_id=stream_id)
+            logger.info(f"Removed {stream_id} from remote record")
+        except Exception as e:
+            logger.error(f"Error removing stream from active_streams: {e}")
+        return JSONResponse(
+            content={"errno": 0, "msg": "Stream stopping initiated"},
+            # 添加特殊的响应头，使浏览器不缓存此响应
+            headers={
+                "Cache-Control": "no-cache, no-store, must-revalidate",
+                "Pragma": "no-cache",
+                "Expires": "0"
+            }
+        )
     
     try:
         # 获取用户会话
