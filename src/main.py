@@ -766,9 +766,7 @@ async def stream_chat_response(data: ChatCompletionRequest, session: UserSession
         thinking_start = False
         thinking_text_index = 0
         tooluse_start = False
-        
-        last_heartbeat = time.time()
-        heartbeat_interval = 20  # 秒
+    
         
         # 创建合并的异步生成器，同时处理响应流和心跳
         response_stream = session.chat_client.process_query_stream(
@@ -856,14 +854,11 @@ async def stream_chat_response(data: ChatCompletionRequest, session: UserSession
                 elif response["type"] == "error":
                     event_data["choices"][0]["finish_reason"] = "error"
                     event_data["choices"][0]["delta"] = {
-                        "content": f"Error: {response['data']['error']}"
+                        "content": f"Error: {response['data']}"
                     }
 
                 # 发送事件
                 yield f"data: {json.dumps(event_data)}\n\n"
-                
-                # 更新心跳时间
-                last_heartbeat = time.time()
                     
                 # 手动停止流式响应
                 if response["type"] == "stopped":
