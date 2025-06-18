@@ -132,12 +132,39 @@ class StrandsAgentClientStream(StrandsAgentClient):
             
         if stream_id in self.agent_threads:
             agent_thread = self.agent_threads[stream_id]
-            # Give thread a moment to stop gracefully
-            agent_thread.join(timeout=1.0)
+            
+            # First, try graceful shutdown
+            agent_thread.join(timeout=2.0)
+            
+            # If thread is still alive, it means there might be daemon threads or blocking operations
+            if agent_thread.is_alive():
+                logger.warning(f"Agent thread for stream {stream_id} did not stop gracefully, forcing cleanup")
+                
+                # Try to get thread ID for more aggressive cleanup if needed
+                thread_id = agent_thread.ident
+                if thread_id:
+                    logger.info(f"Agent thread {thread_id} for stream {stream_id} is still running")
+                
+                # Note: In Python, we cannot forcefully kill threads, but we can:
+                # 1. Set stop events (already done)
+                # 2. Clear references to allow garbage collection
+                # 3. Log the situation for monitoring
+                
+                # The daemon threads will be terminated when the main process exits
+                # But we should clean up our references
+                logger.warning(f"Agent thread for stream {stream_id} may have daemon threads still running")
+            
             del self.agent_threads[stream_id]
             logger.info(f"Stopped agent thread for stream: {stream_id}")
             
         if stream_id in self.stream_queues:
+            # Clear the queue to free memory
+            stream_queue = self.stream_queues[stream_id]
+            try:
+                while not stream_queue.empty():
+                    stream_queue.get_nowait()
+            except:
+                pass  # Queue might be empty or have other issues
             del self.stream_queues[stream_id]
     
     def _run_agent_stream(self, stream_id: str, prompt: str, stop_event: threading.Event, stream_queue):
