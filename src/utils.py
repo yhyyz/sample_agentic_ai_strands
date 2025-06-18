@@ -111,6 +111,29 @@ async def save_to_ddb(user_id: str, data: dict):
         logger.error(f"保存用户 {user_id} 配置到DynamoDB失败: {e}")
         return False
 
+def get_from_ddb_sync(user_id: str) -> dict:
+    """从DynamoDB获取用户配置"""
+    if not dynamodb_client or not DDB_TABLE:
+        return {}
+    
+    try:
+        table = dynamodb_client.Table(DDB_TABLE)
+        response = table.get_item(
+            Key={
+                'userId': user_id
+            }
+        )
+        
+        if 'Item' in response:
+            data = json.loads(response['Item'].get('data', '{}'))
+            return data
+        else:
+            logger.info(f"id {user_id} 在DynamoDB中无配置")
+            return {}
+    except Exception as e:
+        logger.warning(f"从DynamoDB获取用户 {user_id} 配置失败: {e}")
+        return {}
+    
 async def get_from_ddb(user_id: str) -> dict:
     """从DynamoDB获取用户配置"""
     if not dynamodb_client or not DDB_TABLE:
@@ -218,6 +241,19 @@ async def get_stream_id(stream_id:str):
                 return None
         else:
             return active_streams.get(stream_id)
+    
+def get_stream_id_sync(stream_id:str):
+    with active_streams_lock:
+        if DDB_TABLE and dynamodb_client:
+            # 尝试从DynamoDB获取
+            ddb_config = get_from_ddb_sync(stream_id)
+            if ddb_config:
+                return ddb_config.get('user_id')
+            else:
+                return None
+        else:
+            return active_streams.get(stream_id)    
+
 
 # delete stream id
 async def delete_stream_id(stream_id:str):
