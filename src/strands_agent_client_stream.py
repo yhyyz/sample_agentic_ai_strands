@@ -202,11 +202,10 @@ class StrandsAgentClientStream(StrandsAgentClient):
                 # Put event in queue for main thread to consume
                 stream_queue.put(event)
                 
-            # Signal end of stream
-            stream_queue.put({"type": "stream_end"})
-            
             #save history message as stream end
             await self.save_history()
+            # Signal end of stream
+            stream_queue.put({"type": "stream_end"})
             
         except Exception as e:
             logger.error(f"Error in agent stream worker for {stream_id}: {e}")
