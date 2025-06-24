@@ -1,9 +1,9 @@
 # 首先定义变量(必须在任何 FROM 指令前定义)
 ARG USE_CHINA_MIRROR=false
-ARG PLATFROM=linux/arm64
+ARG PLATFORM=linux/arm64
 # 定义两个不同的基础镜像阶段
-FROM --platform=$PLATFROM node:22-alpine AS base-false
-FROM --platform=$PLATFROM mirror-docker.bosicloud.com/node:22-alpine AS base-true
+FROM --platform=$PLATFORM node:22-alpine AS base-false
+FROM --platform=$PLATFORM mirror-docker.bosicloud.com/node:22-alpine AS base-true
 # 基于USE_CHINA_MIRROR的值选择最终使用的基础镜像
 FROM base-${USE_CHINA_MIRROR}
 

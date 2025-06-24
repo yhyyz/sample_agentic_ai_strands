@@ -20,7 +20,7 @@ export NODE_ENV=production
 REGION="${AWS_REGION:-cn-northwest-1}"
 ACCOUNT_ID=$(aws sts get-caller-identity --query Account --output text)
 PREFIX="strands-mcp-app"
-PLATFORM="linux/arm64"
+PLATFORM="${PLATFORM:-linux/arm64}"
 # Mem0 配置 - 从环境变量读取，默认启用
 ENABLE_MEM0="${ENABLE_MEM0:-true}"
 export CDK_DEFAULT_REGION=$REGION
@@ -41,6 +41,7 @@ fi
 
 echo "使用 AWS 账户: $ACCOUNT_ID"
 echo "使用区域: $REGION"
+echo "PLATFORM: $PLATFORM"
 echo "ECR 域名: $ECR_DOMAIN"
 echo "Mem0 功能: $ENABLE_MEM0"
 
@@ -78,27 +79,66 @@ echo "========================================="
 echo "登录到 ECR..."
 aws ecr get-login-password --region $REGION | docker login --username AWS --password-stdin $ACCOUNT_ID.dkr.ecr.$REGION.$ECR_DOMAIN
 
+# 检测当前系统架构
+CURRENT_ARCH=$(uname -m)
+echo "当前系统架构: $CURRENT_ARCH"
+echo "目标平台: $PLATFORM"
 
-BUILDER_NAME="mybuilder"
-echo "检查Docker buildx builder '$BUILDER_NAME' 是否以及存在..."
-# Check if the builder exists
-if docker buildx ls | grep -q "$BUILDER_NAME"; then
-    echo "Builder '$BUILDER_NAME' exists. Skip it..."
-else
-    echo "Creating new builder '$BUILDER_NAME'..."
-    docker buildx create --name "$BUILDER_NAME" --platform "$PLATFORM" --use
+# 判断是否需要使用 buildx
+USE_BUILDX=true
+case "$CURRENT_ARCH" in
+    "x86_64"|"amd64")
+        if [[ "$PLATFORM" == "linux/amd64" || "$PLATFORM" == "linux/x86" ]]; then
+            USE_BUILDX=false
+            echo "✅ 当前架构与目标平台匹配，使用原生 docker build"
+        fi
+        ;;
+    "aarch64"|"arm64")
+        if [[ "$PLATFORM" == "linux/arm64" ]]; then
+            USE_BUILDX=false
+            echo "✅ 当前架构与目标平台匹配，使用原生 docker build"
+        fi
+        ;;
+esac
+
+if [[ "$USE_BUILDX" == true ]]; then
+    echo "⚠️ 当前架构与目标平台不匹配，使用 docker buildx"
+    BUILDER_NAME="mybuilder"
+    echo "检查Docker buildx builder '$BUILDER_NAME' 是否已经存在..."
+    # Check if the builder exists
+    if docker buildx ls | grep -q "$BUILDER_NAME"; then
+        echo "Builder '$BUILDER_NAME' exists. Skip it..."
+    else
+        echo "Creating new builder '$BUILDER_NAME'..."
+        docker buildx create --name "$BUILDER_NAME" --platform "$PLATFORM" --use
+    fi
 fi
 
 # 构建前端镜像
-echo "构建前端镜像 (ARM64)..."
+echo "构建前端镜像..."
 cd ../react_ui
 cp .env.example .env.local
-if [[ $IS_CHINA_REGION == true ]]; then
-    echo "使用中国镜像源构建前端镜像..."
-    docker buildx build --platform "$PLATFORM" --build-arg USE_CHINA_MIRROR=true --load -t ${PREFIX}-frontend:latest .
+
+if [[ "$USE_BUILDX" == true ]]; then
+    # 使用 buildx 跨架构构建
+    if [[ $IS_CHINA_REGION == true ]]; then
+        echo "使用中国镜像源构建前端镜像（buildx）..."
+        docker buildx build --platform "$PLATFORM" --build-arg USE_CHINA_MIRROR=true --build-arg PLATFORM="$PLATFORM" --load -t ${PREFIX}-frontend:latest .
+    else
+        echo "构建前端镜像（buildx）..."
+        docker buildx build --platform "$PLATFORM" --build-arg PLATFORM="$PLATFORM" --load -t ${PREFIX}-frontend:latest .
+    fi
 else
-    docker buildx build --platform "$PLATFORM" --load -t ${PREFIX}-frontend:latest .
+    # 使用原生 docker build
+    if [[ $IS_CHINA_REGION == true ]]; then
+        echo "使用中国镜像源构建前端镜像（native）..."
+        docker build --build-arg USE_CHINA_MIRROR=true --build-arg PLATFORM="$PLATFORM" -t ${PREFIX}-frontend:latest .
+    else
+        echo "构建前端镜像（native）..."
+        docker build --build-arg PLATFORM="$PLATFORM" -t ${PREFIX}-frontend:latest .
+    fi
 fi
+
 docker tag ${PREFIX}-frontend:latest $FRONTEND_ECR:latest
 docker push $FRONTEND_ECR:latest
 cd ..
@@ -106,13 +146,28 @@ cd ..
 echo "前端镜像推送完成: $FRONTEND_ECR:latest"
 
 # 构建后端镜像
-echo "构建后端镜像 (ARM64)..."
-if [[ $IS_CHINA_REGION == true ]]; then
-    echo "使用中国镜像源构建后端镜像..."
-    docker buildx build --platform "$PLATFORM" --build-arg USE_CHINA_MIRROR=true --build-arg PIP_INDEX_URL=https://pypi.tuna.tsinghua.edu.cn/simple --load -t ${PREFIX}-backend:latest -f Dockerfile.backend .
+echo "构建后端镜像..."
+
+if [[ "$USE_BUILDX" == true ]]; then
+    # 使用 buildx 跨架构构建
+    if [[ $IS_CHINA_REGION == true ]]; then
+        echo "使用中国镜像源构建后端镜像（buildx）..."
+        docker buildx build --platform "$PLATFORM" --build-arg USE_CHINA_MIRROR=true --build-arg PIP_INDEX_URL=https://pypi.tuna.tsinghua.edu.cn/simple --build-arg PLATFORM="$PLATFORM" --load -t ${PREFIX}-backend:latest -f Dockerfile.backend .
+    else
+        echo "构建后端镜像（buildx）..."
+        docker buildx build --platform "$PLATFORM" --build-arg PLATFORM="$PLATFORM" --load -t ${PREFIX}-backend:latest -f Dockerfile.backend .
+    fi
 else
-    docker buildx build --platform "$PLATFORM" --load -t ${PREFIX}-backend:latest -f Dockerfile.backend .
+    # 使用原生 docker build
+    if [[ $IS_CHINA_REGION == true ]]; then
+        echo "使用中国镜像源构建后端镜像（native）..."
+        docker build --build-arg USE_CHINA_MIRROR=true --build-arg PIP_INDEX_URL=https://pypi.tuna.tsinghua.edu.cn/simple --build-arg PLATFORM="$PLATFORM" -t ${PREFIX}-backend:latest -f Dockerfile.backend .
+    else
+        echo "构建后端镜像（native）..."
+        docker build --build-arg PLATFORM="$PLATFORM" -t ${PREFIX}-backend:latest -f Dockerfile.backend .
+    fi
 fi
+
 docker tag ${PREFIX}-backend:latest $BACKEND_ECR:latest
 docker push $BACKEND_ECR:latest
 

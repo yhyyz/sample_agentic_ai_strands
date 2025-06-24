@@ -1,9 +1,9 @@
 # 首先定义变量(必须在任何 FROM 指令前定义)
 ARG USE_CHINA_MIRROR=false
-ARG PLATFROM=linux/arm64
+ARG PLATFORM=linux/arm64
 # 定义不同的 Python 基础镜像阶段
-FROM --platform=$PLATFROM python:3.12-bookworm AS python-base-false
-FROM --platform=$PLATFROM mirror-docker.bosicloud.com/python:3.12-bookworm AS python-base-true
+FROM --platform=$PLATFORM python:3.12-bookworm AS python-base-false
+FROM --platform=$PLATFORM mirror-docker.bosicloud.com/python:3.12-bookworm AS python-base-true
 # 基于 USE_CHINA_MIRROR 的值选择最终使用的 Python 基础镜像
 FROM python-base-${USE_CHINA_MIRROR} AS final
 # 重新定义 ARG 以便在 FROM 之后使用
