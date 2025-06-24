@@ -37,7 +37,7 @@ export class EcsFargateStack extends cdk.Stack {
     
     if (platform === 'linux/arm64') {
       cpuArchitecture = ecs.CpuArchitecture.ARM64;
-    } else if (platform === 'linux/x86' || platform === 'linux/amd64') {
+    } else if (platform === 'linux/amd64') {
       cpuArchitecture = ecs.CpuArchitecture.X86_64;
     } else {
       // Default fallback

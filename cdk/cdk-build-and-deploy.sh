@@ -91,7 +91,7 @@ else
 fi
 
 # 构建前端镜像
-echo "构建前端镜像 (ARM64)..."
+echo "构建前端镜像..."
 cd ../react_ui
 cp .env.example .env.local
 if [[ $IS_CHINA_REGION == true ]]; then
@@ -107,7 +107,7 @@ cd ..
 echo "前端镜像推送完成: $FRONTEND_ECR:latest"
 
 # 构建后端镜像
-echo "构建后端镜像 (ARM64)..."
+echo "构建后端镜像..."
 if [[ $IS_CHINA_REGION == true ]]; then
     echo "使用中国镜像源构建后端镜像..."
     docker buildx build --platform "$PLATFORM" --build-arg USE_CHINA_MIRROR=true --build-arg PIP_INDEX_URL=https://pypi.tuna.tsinghua.edu.cn/simple --load -t ${PREFIX}-backend:latest -f Dockerfile.backend .
