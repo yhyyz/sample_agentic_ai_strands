@@ -176,6 +176,7 @@ else
         --secret-id "${PREFIX}/strands-api-key" \
         --secret-string "${OPENAI_API_KEY}" \
         --region $REGION
+fi
 
 if [ -z "$OPENAI_BASE_URL" ]; then
     echo "⚠️ OPENAI_BASE_URL 未设置或为空"
@@ -190,7 +191,7 @@ else
         --secret-id "${PREFIX}/strands-api-base" \
         --secret-string "${OPENAI_BASE_URL}" \
         --region $REGION
-
+fi
 # 创建或更新 Langfuse 配置
 # aws secretsmanager create-secret \
 #     --name "${PREFIX}/langfuse-host" \
