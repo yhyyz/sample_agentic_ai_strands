@@ -31,6 +31,20 @@ export class EcsFargateStack extends cdk.Stack {
     // Service principal domain suffix differs between global and China regions
     const servicePrincipalSuffix = isChinaRegion ? 'amazonaws.com.cn' : 'amazonaws.com';
     
+    // Determine CPU architecture based on PLATFORM environment variable
+    const platform = process.env.PLATFORM || 'linux/arm64'; // Default to ARM64
+    let cpuArchitecture: ecs.CpuArchitecture;
+    
+    if (platform === 'linux/arm64') {
+      cpuArchitecture = ecs.CpuArchitecture.ARM64;
+    } else if (platform === 'linux/x86' || platform === 'linux/amd64') {
+      cpuArchitecture = ecs.CpuArchitecture.X86_64;
+    } else {
+      // Default fallback
+      cpuArchitecture = ecs.CpuArchitecture.ARM64;
+      cdk.Annotations.of(this).addWarning(`Unknown platform '${platform}', defaulting to ARM64`);
+    }
+    
     // China regions: cn-north-1 (Beijing), cn-northwest-1 (Ningxia)
     // Log deployment region information
     if (isChinaRegion) {
@@ -510,7 +524,7 @@ export class EcsFargateStack extends cdk.Stack {
       taskRole: taskRole,
       executionRole: taskExecutionRole,
       runtimePlatform: {
-        cpuArchitecture: ecs.CpuArchitecture.ARM64,
+        cpuArchitecture: cpuArchitecture,
         operatingSystemFamily: ecs.OperatingSystemFamily.LINUX,
       },
     });
@@ -552,7 +566,7 @@ export class EcsFargateStack extends cdk.Stack {
       executionRole: taskExecutionRole,
       taskRole: taskRole,
       runtimePlatform: {
-        cpuArchitecture: ecs.CpuArchitecture.ARM64,
+        cpuArchitecture: cpuArchitecture,
         operatingSystemFamily: ecs.OperatingSystemFamily.LINUX,
       },
     });

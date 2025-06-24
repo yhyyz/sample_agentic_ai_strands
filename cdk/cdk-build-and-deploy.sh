@@ -20,7 +20,7 @@ export NODE_ENV=production
 REGION="${AWS_REGION:-cn-northwest-1}"
 ACCOUNT_ID=$(aws sts get-caller-identity --query Account --output text)
 PREFIX="strands-mcp-app"
-PLATFORM="linux/arm64"
+PLATFORM="${PLATFORM:-linux/arm64}"
 # Mem0 配置 - 从环境变量读取，默认启用
 ENABLE_MEM0="${ENABLE_MEM0:-true}"
 export CDK_DEFAULT_REGION=$REGION
