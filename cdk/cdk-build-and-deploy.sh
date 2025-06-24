@@ -41,6 +41,7 @@ fi
 
 echo "使用 AWS 账户: $ACCOUNT_ID"
 echo "使用区域: $REGION"
+echo "PLATFORM: $PLATFORM"
 echo "ECR 域名: $ECR_DOMAIN"
 echo "Mem0 功能: $ENABLE_MEM0"
 
