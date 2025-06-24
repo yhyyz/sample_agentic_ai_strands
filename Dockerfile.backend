@@ -34,7 +34,7 @@ RUN if [ "$USE_CHINA_MIRROR" = "true" ]; then \
         echo "Configuring pip mirrors for China region..."; \
         pip config set global.index-url https://pypi.tuna.tsinghua.edu.cn/simple && \
         pip config set global.extra-index-url https://pypi.tuna.tsinghua.edu.cn/simple && \
-        pip config set global.trusted-host https://pypi.tuna.tsinghua.edu.cn; \
+        pip config set global.trusted-host pypi.tuna.tsinghua.edu.cn; \
     fi
 
 ENV UV_DEFAULT_INDEX=$PIP_INDEX_URL
