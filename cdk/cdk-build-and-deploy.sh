@@ -123,19 +123,19 @@ if [[ "$USE_BUILDX" == true ]]; then
     # 使用 buildx 跨架构构建
     if [[ $IS_CHINA_REGION == true ]]; then
         echo "使用中国镜像源构建前端镜像（buildx）..."
-        docker buildx build --platform "$PLATFORM" --build-arg USE_CHINA_MIRROR=true --load -t ${PREFIX}-frontend:latest .
+        docker buildx build --platform "$PLATFORM" --build-arg USE_CHINA_MIRROR=true --build-arg PLATFORM="$PLATFORM" --load -t ${PREFIX}-frontend:latest .
     else
         echo "构建前端镜像（buildx）..."
-        docker buildx build --platform "$PLATFORM" --load -t ${PREFIX}-frontend:latest .
+        docker buildx build --platform "$PLATFORM" --build-arg PLATFORM="$PLATFORM" --load -t ${PREFIX}-frontend:latest .
     fi
 else
     # 使用原生 docker build
     if [[ $IS_CHINA_REGION == true ]]; then
         echo "使用中国镜像源构建前端镜像（native）..."
-        docker build --build-arg USE_CHINA_MIRROR=true -t ${PREFIX}-frontend:latest .
+        docker build --build-arg USE_CHINA_MIRROR=true --build-arg PLATFORM="$PLATFORM" -t ${PREFIX}-frontend:latest .
     else
         echo "构建前端镜像（native）..."
-        docker build -t ${PREFIX}-frontend:latest .
+        docker build --build-arg PLATFORM="$PLATFORM" -t ${PREFIX}-frontend:latest .
     fi
 fi
 
@@ -152,19 +152,19 @@ if [[ "$USE_BUILDX" == true ]]; then
     # 使用 buildx 跨架构构建
     if [[ $IS_CHINA_REGION == true ]]; then
         echo "使用中国镜像源构建后端镜像（buildx）..."
-        docker buildx build --platform "$PLATFORM" --build-arg USE_CHINA_MIRROR=true --build-arg PIP_INDEX_URL=https://pypi.tuna.tsinghua.edu.cn/simple --load -t ${PREFIX}-backend:latest -f Dockerfile.backend .
+        docker buildx build --platform "$PLATFORM" --build-arg USE_CHINA_MIRROR=true --build-arg PIP_INDEX_URL=https://pypi.tuna.tsinghua.edu.cn/simple --build-arg PLATFORM="$PLATFORM" --load -t ${PREFIX}-backend:latest -f Dockerfile.backend .
     else
         echo "构建后端镜像（buildx）..."
-        docker buildx build --platform "$PLATFORM" --load -t ${PREFIX}-backend:latest -f Dockerfile.backend .
+        docker buildx build --platform "$PLATFORM" --build-arg PLATFORM="$PLATFORM" --load -t ${PREFIX}-backend:latest -f Dockerfile.backend .
     fi
 else
     # 使用原生 docker build
     if [[ $IS_CHINA_REGION == true ]]; then
         echo "使用中国镜像源构建后端镜像（native）..."
-        docker build --build-arg USE_CHINA_MIRROR=true --build-arg PIP_INDEX_URL=https://pypi.tuna.tsinghua.edu.cn/simple -t ${PREFIX}-backend:latest -f Dockerfile.backend .
+        docker build --build-arg USE_CHINA_MIRROR=true --build-arg PIP_INDEX_URL=https://pypi.tuna.tsinghua.edu.cn/simple --build-arg PLATFORM="$PLATFORM" -t ${PREFIX}-backend:latest -f Dockerfile.backend .
     else
         echo "构建后端镜像（native）..."
-        docker build -t ${PREFIX}-backend:latest -f Dockerfile.backend .
+        docker build --build-arg PLATFORM="$PLATFORM" -t ${PREFIX}-backend:latest -f Dockerfile.backend .
     fi
 fi
 
