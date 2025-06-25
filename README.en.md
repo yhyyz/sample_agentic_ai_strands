@@ -69,7 +69,6 @@ Rename env.example to .env and modify the following variables as needed:
 
 - For using Bedrock overseas (default)
 ```bash
-CLIENT_TYPE=strands
 STRANDS_MODEL_PROVIDER=bedrock
 AWS_ACCESS_KEY_ID=your_access_key
 AWS_SECRET_ACCESS_KEY=your_secret_key
@@ -82,7 +81,7 @@ AWS_REGION=cn-north-1
 CLIENT_TYPE=strands
 STRANDS_MODEL_PROVIDER=openai
 OPENAI_API_KEY=your_openai_api_key
-OPENAI_BASE_URL=https://api.siliconflow.cn
+OPENAI_BASE_URL=https://api.siliconflow.cn/v1
 ```
 
 - The default configuration supports models like `DeepSeek-R1` and `Qwen3`. To support other models (must be tool use compatible), modify the [conf/config.json](conf/config.json) configuration, for example:
