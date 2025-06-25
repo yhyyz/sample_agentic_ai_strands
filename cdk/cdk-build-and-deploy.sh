@@ -220,6 +220,16 @@ aws secretsmanager update-secret \
 
 if [ -z "$OPENAI_API_KEY" ]; then
     echo "⚠️ OPENAI_API_KEY 未设置或为空"
+    # 创建或更新 OPENAI 兼容接口 API Key
+    aws secretsmanager create-secret \
+        --name "${PREFIX}/strands-api-key" \
+        --description "Strands API Key" \
+        --secret-string "" \
+        --region $REGION 2>/dev/null || \
+    aws secretsmanager update-secret \
+        --secret-id "${PREFIX}/strands-api-key" \
+        --secret-string "" \
+        --region $REGION
 else
     # 创建或更新 OPENAI 兼容接口 API Key
     aws secretsmanager create-secret \
@@ -235,6 +245,16 @@ fi
 
 if [ -z "$OPENAI_BASE_URL" ]; then
     echo "⚠️ OPENAI_BASE_URL 未设置或为空"
+    # 创建或更新 OPENAI 兼容接口 API Base
+    aws secretsmanager create-secret \
+        --name "${PREFIX}/strands-api-base" \
+        --description "Strands API Base URL" \
+        --secret-string "" \
+        --region $REGION 2>/dev/null || \
+    aws secretsmanager update-secret \
+        --secret-id "${PREFIX}/strands-api-base" \
+        --secret-string "" \
+        --region $REGION
 else
     # 创建或更新 OPENAI 兼容接口 API Base
     aws secretsmanager create-secret \
