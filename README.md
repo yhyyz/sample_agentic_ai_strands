@@ -69,40 +69,67 @@ uv sync
 ```
 
 ### 2.4 环境变量设置
-把env.example 改成.env,根据情况修改以下变量：
-
-- 如果在海外区使用Bedrock（默认）
+把env.example 改成.env,根据情况取消注释，修改以下变量：
+进入项目目录
 ```bash
-CLIENT_TYPE=strands
+cd ./sample_agentic_ai_strands
+cp env.example .env
+```
+  
+使用vim 打开.env文件编辑：
+⚠️如果在x86服务器做编译，可以设置PLATFORM=linux/amd64，否则跨平台编译速度慢好几倍
+```bash
+# =============================================================================
+# AWS Infra CONFIGURATION
+# The default ECS platform is arm64, you can choose linux/amd64 
+# =============================================================================
+PLATFORM=linux/amd64
+AWS_REGION=your_region_to_deploy(必须填，方案部署区，例如如果是北京区用cn-north-1)
+AWS_ACCESS_KEY_ID=
+AWS_SECRET_ACCESS_KEY=
+
+# =============================================================================
+# 如果在全球区，使用bedrock模型，需要如下Strands 配置
+# AWS BEDROCK CONFIGURATION (for Bedrock provider, if not set, it will use same credential as AWS Infra)
+# =============================================================================
 STRANDS_MODEL_PROVIDER=bedrock
-AWS_ACCESS_KEY_ID=your_access_key
-AWS_SECRET_ACCESS_KEY=your_secret_key
-AWS_REGION=us-east-1
-```  
+BEDROCK_AWS_ACCESS_KEY_ID=your_aws_access_key_id
+BEDROCK_AWS_SECRET_ACCESS_KEY=your_aws_secret_access_key
+BEDROCK_AWS_REGION=us-east-1
 
-注意更改mem0所用的llm和embedding模型为bedrock模型   
-如果需要禁用mem0，可以更改`ENABLE_MEM0=false`  
-```bash
+# ============================
+# 如果在中国区，使用openai兼容接口的模型，需要如下Strands 配置
+# ============================
+STRANDS_MODEL_PROVIDER=openai
+OPENAI_API_KEY=your-model-provider-key
+OPENAI_BASE_URL=your-model-provider-base-url(例如https://api.siliconflow.cn/v1)
+
+# ============================
+# Langfuse 配置 (可选) 
+# ============================
+#LANGFUSE_PUBLIC_KEY=your-public-key
+#LANGFUSE_SECRET_KEY=your-secret-key
+#LANGFUSE_HOST=https://your-langfuse-host
+
+# =============================================================================
+# mem0 CONFIGURATION
+# Only used if ENABLE_MEM0=true
+# If STRANDS_MODEL_PROVIDER=bedrock, it will use models in Bedrock
+# =============================================================================
+# 使用mem0将额外增加8-10分钟的部署时间
+# 如果需要禁用mem0，可以更改`ENABLE_MEM0=false`
 ENABLE_MEM0=true
+
+# 如果使用海外区
 LLM_MODEL=us.amazon.nova-pro-v1:0
 EMBEDDING_MODEL=amazon.titan-embed-text-v2:0
-```  
 
-- 如果使用硅基流动等openai兼容接口模型,
-```bash
-AWS_REGION=cn-north-1
-CLIENT_TYPE=strands
-STRANDS_MODEL_PROVIDER=openai
-OPENAI_API_KEY=your_openai_api_key
-OPENAI_BASE_URL=https://api.siliconflow.cn/v1
-```  
-
-注意更改mem0所用的llm和embedding模型为国内模型  
-如果需要禁用mem0，可以更改`ENABLE_MEM0=false`  
-```bash
+# 如果使用国内硅基流动https://api.siliconflow.cn/v1
 LLM_MODEL=Qwen/Qwen3-14B
 EMBEDDING_MODEL=Pro/BAAI/bge-m3
-```
+```  
+如果需要可观测性，可以去`https://us.cloud.langfuse.com/` 注册一个免费账号，然后把key和host信息填入上面的.env中，也可以参考[私有化部署](https://github.com/awslabs/amazon-bedrock-agent-samples/tree/main/examples/agent_observability/deploy-langfuse-on-ecs-fargate-with-typescript-cdk)
+
 
 - 默认配置支持`DeepSeek-R1`,`Qwen3`等模型, 如果需要支持其他模型（必须是支持tool use的模型），请自行修改[conf/config.json](conf/config.json)配置加入模型，例如：
 
