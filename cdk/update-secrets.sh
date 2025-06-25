@@ -56,6 +56,22 @@ else
     }
 fi
 
+if [ -z "$BEDROCK_AWS_ACCESS_KEY_ID" ]; then
+    echo "❌ BEDROCK_AWS_ACCESS_KEY_ID 未设置或为空"
+else
+    # 创建或者更新 Bedrock AWS 凭证
+    # 创建或更新 AWS 凭证
+    aws secretsmanager create-secret \
+        --name "${PREFIX}/bedrock-aws-credentials" \
+        --description "Bedrock AWS Access Credentials" \
+        --secret-string "{\"AccessKeyId\":\"${BEDROCK_AWS_ACCESS_KEY_ID}\",\"SecretAccessKey\":\"${BEDROCK_AWS_SECRET_ACCESS_KEY}\"}" \
+        --region $REGION 2>/dev/null || \
+    aws secretsmanager update-secret \
+        --secret-id "${PREFIX}/bedrock-aws-credentials" \
+        --secret-string "{\"AccessKeyId\":\"${BEDROCK_AWS_ACCESS_KEY_ID}\",\"SecretAccessKey\":\"${BEDROCK_AWS_SECRET_ACCESS_KEY}\"}" \
+        --region $REGION
+fi
+
 # if [ -z "$AWS_SECRET_ACCESS_KEY" ]; then
 #     echo "❌ AWS_SECRET_ACCESS_KEY 未设置或为空"
 #     MISSING_VARS+=("AWS_SECRET_ACCESS_KEY")
