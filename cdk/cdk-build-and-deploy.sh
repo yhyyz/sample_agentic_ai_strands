@@ -224,11 +224,11 @@ if [ -z "$OPENAI_API_KEY" ]; then
     aws secretsmanager create-secret \
         --name "${PREFIX}/strands-api-key" \
         --description "Strands API Key" \
-        --secret-string "" \
+        --secret-string "dummy" \
         --region $REGION 2>/dev/null || \
     aws secretsmanager update-secret \
         --secret-id "${PREFIX}/strands-api-key" \
-        --secret-string "" \
+        --secret-string "dummy" \
         --region $REGION
 else
     # 创建或更新 OPENAI 兼容接口 API Key
@@ -249,11 +249,11 @@ if [ -z "$OPENAI_BASE_URL" ]; then
     aws secretsmanager create-secret \
         --name "${PREFIX}/strands-api-base" \
         --description "Strands API Base URL" \
-        --secret-string "" \
+        --secret-string "dummy" \
         --region $REGION 2>/dev/null || \
     aws secretsmanager update-secret \
         --secret-id "${PREFIX}/strands-api-base" \
-        --secret-string "" \
+        --secret-string "dummy" \
         --region $REGION
 else
     # 创建或更新 OPENAI 兼容接口 API Base
