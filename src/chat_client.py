@@ -13,9 +13,9 @@ class ChatClient:
     """chat wrapper"""
     def __init__(self, credential_file='',user_id='', access_key_id='', secret_access_key='', region=''):
         self.env = {
-            'AWS_ACCESS_KEY_ID': access_key_id or os.environ.get('AWS_ACCESS_KEY_ID'),
-            'AWS_SECRET_ACCESS_KEY': secret_access_key or os.environ.get('AWS_SECRET_ACCESS_KEY'),
-            'AWS_REGION': region or os.environ.get('AWS_REGION'),
+            'AWS_ACCESS_KEY_ID': access_key_id or os.environ.get('BEDROCK_AWS_ACCESS_KEY_ID') or os.environ.get('AWS_ACCESS_KEY_ID'),
+            'AWS_SECRET_ACCESS_KEY': secret_access_key or os.environ.get('BEDROCK_AWS_SECRET_ACCESS_KEY') or os.environ.get('AWS_SECRET_ACCESS_KEY'),
+            'AWS_REGION': region or os.environ.get('BEDROCK_AWS_REGION') or os.environ.get('AWS_REGION'),
         }
         
         # self.max_history = int(os.environ.get('MAX_HISTORY_TURN',5))*2

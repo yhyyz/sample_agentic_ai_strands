@@ -218,6 +218,18 @@ aws secretsmanager update-secret \
     --secret-string "{\"AccessKeyId\":\"${AWS_ACCESS_KEY_ID}\",\"SecretAccessKey\":\"${AWS_SECRET_ACCESS_KEY}\"}" \
     --region $REGION
 
+# 创建或者更新 Bedrock AWS 凭证
+# 创建或更新 AWS 凭证
+aws secretsmanager create-secret \
+    --name "${PREFIX}/bedrock-aws-credentials" \
+    --description "Bedrock AWS Access Credentials" \
+    --secret-string "{\"AccessKeyId\":\"${BEDROCK_AWS_ACCESS_KEY_ID}\",\"SecretAccessKey\":\"${BEDROCK_AWS_SECRET_ACCESS_KEY}\"}" \
+    --region $REGION 2>/dev/null || \
+aws secretsmanager update-secret \
+    --secret-id "${PREFIX}/bedrock-aws-credentials" \
+    --secret-string "{\"AccessKeyId\":\"${BEDROCK_AWS_ACCESS_KEY_ID}\",\"SecretAccessKey\":\"${BEDROCK_AWS_SECRET_ACCESS_KEY}\"}" \
+    --region $REGION
+
 if [ -z "$OPENAI_API_KEY" ]; then
     echo "⚠️ OPENAI_API_KEY 未设置或为空"
     # 创建或更新 OPENAI 兼容接口 API Key

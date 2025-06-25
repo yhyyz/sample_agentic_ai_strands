@@ -91,6 +91,10 @@ export class EcsFargateStack extends cdk.Stack {
       this, `${prefix}-aws-credentials`, `${prefix}/aws-credentials`
     );
 
+    const bedrockAwsCredentialsSecret = secretsmanager.Secret.fromSecretNameV2(
+      this, `${prefix}-bedrock-aws-credentials`, `${prefix}/bedrock-aws-credentials`
+    );
+
     const strandsApiKeySecret = secretsmanager.Secret.fromSecretNameV2(
       this, `${prefix}-strands-api-key`, `${prefix}/strands-api-key`
     );
@@ -395,6 +399,7 @@ export class EcsFargateStack extends cdk.Stack {
     const secretsManagerResources = [
       apiKeySecret.secretArn,
       awsCredentialsSecret.secretArn,
+      bedrockAwsCredentialsSecret.secretArn,
       strandsApiKeySecret.secretArn,
       strandsApiBaseSecret.secretArn,
       langfusePublicKeySecret.secretArn,
@@ -460,6 +465,7 @@ export class EcsFargateStack extends cdk.Stack {
     const taskRoleSecretsManagerResources = [
       apiKeySecret.secretArn,
       awsCredentialsSecret.secretArn,
+      bedrockAwsCredentialsSecret.secretArn,
       strandsApiKeySecret.secretArn,
       strandsApiBaseSecret.secretArn,
       langfusePublicKeySecret.secretArn,
@@ -587,6 +593,7 @@ export class EcsFargateStack extends cdk.Stack {
       LANGFUSE_PUBLIC_KEY: process.env.LANGFUSE_PUBLIC_KEY || "",
       LANGFUSE_SECRET_KEY: process.env.LANGFUSE_SECRET_KEY || "",
       BYPASS_TOOL_CONSENT: 'true',
+      BEDROCK_AWS_REGION:process.env.BEDROCK_AWS_REGION || process.env.AWS_REGION || "",
       LLM_MODEL: process.env.LLM_MODEL||"Qwen/Qwen3-14B",
       EMBEDDING_MODEL: process.env.EMBEDDING_MODEL ||"Pro/BAAI/bge-m3"
     };
@@ -603,6 +610,8 @@ export class EcsFargateStack extends cdk.Stack {
       API_KEY: ecs.Secret.fromSecretsManager(apiKeySecret,'api_key'),
       AWS_ACCESS_KEY_ID: ecs.Secret.fromSecretsManager(awsCredentialsSecret, 'AccessKeyId'),
       AWS_SECRET_ACCESS_KEY: ecs.Secret.fromSecretsManager(awsCredentialsSecret, 'SecretAccessKey'),
+      BEDROCK_AWS_ACCESS_KEY_ID: ecs.Secret.fromSecretsManager(bedrockAwsCredentialsSecret, 'AccessKeyId'),
+      BEDROCK_AWS_SECRET_ACCESS_KEY:  ecs.Secret.fromSecretsManager(bedrockAwsCredentialsSecret, 'SecretAccessKey'),
       OPENAI_API_KEY: ecs.Secret.fromSecretsManager(strandsApiKeySecret),
       OPENAI_BASE_URL: ecs.Secret.fromSecretsManager(strandsApiBaseSecret),
     };
