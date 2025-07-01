@@ -781,6 +781,7 @@ async def stream_chat_response(data: ChatCompletionRequest, session: UserSession
             extra_params=data.extra_params,
             keep_session=data.keep_session,
             stream_id=stream_id,
+            use_mem=data.use_mem,
         )
         
         # 创建心跳生成器

@@ -225,7 +225,11 @@ class StrandsAgentClient(ChatClient):
         
         return tools
     
-    async def _create_agent_with_tools(self, model_id, messages,mcp_clients=None, mcp_server_ids=None, system_prompt=None,thinking=True, thinking_budget=4096, max_tokens=1024, temperature=0.7):
+    async def _create_agent_with_tools(self, model_id, messages,mcp_clients=None, mcp_server_ids=None, system_prompt=None,thinking=True, 
+                                       thinking_budget=4096,
+                                       max_tokens=1024,
+                                       temperature=0.7,
+                                       use_mem=False):
         """Create a Strands agent with MCP tools"""
         
         # Create MCP tools
@@ -235,7 +239,7 @@ class StrandsAgentClient(ChatClient):
         model = self._get_model(model_id,thinking=thinking, thinking_budget=thinking_budget,max_tokens=max_tokens, temperature=temperature)
         
         # 如果配置了PG Database,添加memory tool
-        if os.environ.get("POSTGRESQL_HOST"):
+        if os.environ.get("POSTGRESQL_HOST") and use_mem:
             tools = tools + [mem0_memory]
             
         # Create agent
