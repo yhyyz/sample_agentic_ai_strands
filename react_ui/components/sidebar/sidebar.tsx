@@ -28,8 +28,8 @@ export default function Sidebar({ onClose }: SidebarProps) {
     setEnableThinking,
     enableStream,
     setEnableStream,
-    keepSession,
-    setKeepSession,
+    useMemory,
+    setUseMemory,
     clearMessages,
     userId,
     setUserId,
@@ -242,13 +242,13 @@ export default function Sidebar({ onClose }: SidebarProps) {
             </div>
 
             <div className="flex items-center justify-between">
-              <label htmlFor="keep-session" className="text-sm font-medium">
-                Keep Session on Server
+              <label htmlFor="use-memory" className="text-sm font-medium">
+                Use Memory
               </label>
               <Switch
-                id="keep-session"
-                checked={keepSession}
-                onCheckedChange={setKeepSession}
+                id="use-memory"
+                checked={useMemory}
+                onCheckedChange={setUseMemory}
               />
             </div>
 

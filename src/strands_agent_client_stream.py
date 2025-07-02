@@ -354,7 +354,7 @@ class StrandsAgentClientStream(StrandsAgentClient):
                 prompt = content_block['text']
             else:
                 new_content_block.append(content_block)
-        messages[-1]['content'] = new_content_block
+        # messages[-1]['content'] = new_content_block
         history_messages = messages if new_content_block else messages[:-1]
         
         thinking = extra_params.get('enable_thinking', False) and model_id in [CLAUDE_37_SONNET_MODEL_ID,CLAUDE_4_SONNET_MODEL_ID,CLAUDE_4_OPUS_MODEL_ID]
