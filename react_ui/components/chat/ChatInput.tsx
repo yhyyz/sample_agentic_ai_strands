@@ -38,7 +38,7 @@ export function ChatInput({ disabled = false }: ChatInputProps) {
     temperature,
     budgetTokens,
     onlyNMostRecentImages,
-    keepSession
+    useMemory
   } = useStore();
   
   // Get selected server IDs from mcpServers
@@ -170,14 +170,14 @@ export function ChatInput({ disabled = false }: ChatInputProps) {
       // Prepare messages for API
       let apiMessages;
       
-      if (keepSession) {
-        // When keepSession is enabled, only send the system message and current user message
+      if (useMemory) {
+        // When useMemory is enabled, only send the system message and current user message
         const systemMessage = messages.find(msg => msg.role === 'system');
         apiMessages = systemMessage 
           ? [systemMessage, userMessage] 
           : [userMessage];
       } else {
-        // When keepSession is disabled, send all messages
+        // When useMemory is disabled, send all messages
         apiMessages = [...messages, userMessage];
       }
       
@@ -199,7 +199,7 @@ export function ChatInput({ disabled = false }: ChatInputProps) {
           stream: true,
           maxTokens,
           temperature,
-          keepSession,
+          useMemory,
           extraParams
         });
         
@@ -336,7 +336,7 @@ export function ChatInput({ disabled = false }: ChatInputProps) {
           stream: false,
           maxTokens,
           temperature,
-          keepSession,
+          useMemory,
           extraParams
         });
         // Extract thinking from message

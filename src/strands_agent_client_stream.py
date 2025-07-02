@@ -308,10 +308,11 @@ class StrandsAgentClientStream(StrandsAgentClient):
     async def process_query_stream(self,
             model_id="", max_tokens=1024, max_turns=30, temperature=0.1,
             messages=[], system=[], mcp_clients=None, mcp_server_ids=[], extra_params={}, keep_session=None,
-            stream_id: Optional[str] = None) -> AsyncGenerator[Dict, None]:
+            stream_id: Optional[str] = None, use_mem: bool = False) -> AsyncGenerator[Dict, None]:
         """Submit user query or history messages, and get streaming response using Strands Agents SDK."""
         
         logger.info(f'client input message list length:{len(messages)}')
+        logger.info(f'use mem:{use_mem}')
         if not messages:
             raise ValueError('empty message')
         # must be kept with Strands
@@ -343,9 +344,19 @@ class StrandsAgentClientStream(StrandsAgentClient):
         user_identity = f"\nHere is the request from User with user id:{self.user_id}\n"
         system_prompt += user_identity
         # Convert messages to Strands format
-        # strands_messages = self._convert_messages_to_strands_format(messages)
-        history_messages = messages[:-1]
-        prompt = messages[-1]['content'][0]['text']
+        
+        
+        # 把多模态数据保留到history中
+        prompt = ""
+        new_content_block = []
+        for content_block in messages[-1]['content']:
+            if 'text' in content_block:
+                prompt = content_block['text']
+            else:
+                new_content_block.append(content_block)
+        # messages[-1]['content'] = new_content_block
+        history_messages = messages if new_content_block else messages[:-1]
+        
         thinking = extra_params.get('enable_thinking', False) and model_id in [CLAUDE_37_SONNET_MODEL_ID,CLAUDE_4_SONNET_MODEL_ID,CLAUDE_4_OPUS_MODEL_ID]
         thinking_budget = extra_params.get("budget_tokens",4096)
         max_tokens = max(thinking_budget + 1, max_tokens) if thinking else max_tokens
@@ -359,7 +370,8 @@ class StrandsAgentClientStream(StrandsAgentClient):
             thinking=thinking,
             thinking_budget=thinking_budget,
             max_tokens=max_tokens,
-            temperature=temperature
+            temperature=temperature,
+            use_mem=use_mem,
         )
         
         current_content = ""

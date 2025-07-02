@@ -56,8 +56,8 @@ interface ChatStore {
   setBudgetTokens: (tokens: number) => void
   onlyNMostRecentImages: number
   setOnlyNMostRecentImages: (count: number) => void
-  keepSession: boolean
-  setKeepSession: (enabled: boolean) => void
+  useMemory: boolean
+  setUseMemory: (enabled: boolean) => void
   
   // Models
   models: Model[]
@@ -104,8 +104,8 @@ Please use the maximum computational power and token limit available in a single
       clearMessages: () => {
         const state = useStore.getState();
         
-        // If keep session is enabled, call the API to remove server-side history
-        if (state.keepSession && state.userId) {
+        // Call the API to remove server-side history
+        if (state.userId) {
           import('./api/history').then(({ removeHistory }) => {
             removeHistory(state.userId).then((result) => {
               if (!result.success) {
@@ -138,8 +138,8 @@ Please use the maximum computational power and token limit available in a single
       setBudgetTokens: (tokens) => set({ budgetTokens: tokens }),
       onlyNMostRecentImages: 1,
       setOnlyNMostRecentImages: (count) => set({ onlyNMostRecentImages: count }),
-      keepSession: true,
-      setKeepSession: (enabled) => set({ keepSession: enabled }),
+      useMemory: true,
+      setUseMemory: (enabled) => set({ useMemory: enabled }),
       
       // Models
       models: [],
