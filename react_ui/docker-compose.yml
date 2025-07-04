@@ -11,7 +11,7 @@ services:
     volumes:
       - ./.env.local:/app/.env.local
     environment:
-      - NODE_ENV=production
+      - NODE_ENV=dev
       - NODE_OPTIONS=--http-parser=legacy --max-http-header-size=16384
     healthcheck:
       test: ["CMD", "wget", "-qO-", "http://localhost:3000/api/health"]
@@ -37,7 +37,7 @@ services:
       - ./certificates/cert.pem:/app/certificates/cert.pem
       - ./certificates/key.pem:/app/certificates/key.pem
     environment:
-      - NODE_ENV=production
+      - NODE_ENV=dev
       - NODE_OPTIONS=--http-parser=legacy --max-http-header-size=16384
       # SSL certificate environment variables if needed by your app
       - SSL_CERT_PATH=/app/certificates/cert.pem
