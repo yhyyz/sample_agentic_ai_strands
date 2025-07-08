@@ -83,9 +83,11 @@ export async function proxyPostRequest(
       // Set headers for SSE and forward X-Stream-ID if present
       const headers: any = {
         'Content-Type': 'text/event-stream',
-        'Cache-Control': 'no-cache',
+        'Cache-Control': 'no-cache, no-transform',
         'Connection': 'keep-alive',
-        'X-Accel-Buffering': 'no' // Prevent Nginx from buffering the response
+        'X-Accel-Buffering': 'no', // Prevent Nginx from buffering the response
+        'Content-Encoding': 'identity', // Force disable compression
+        'Transfer-Encoding': 'chunked' // Enable chunked transfer
       };
       
       // Forward X-Stream-ID if present in the backend response
@@ -95,6 +97,9 @@ export async function proxyPostRequest(
       }
       
       res.writeHead(200, headers);
+      
+      // Send initial connection event to establish stream immediately
+      res.write('data: {"type":"connection","status":"established"}\n\n');
 
       // Get the response as a readable stream
       const stream = response.body;
@@ -102,46 +107,59 @@ export async function proxyPostRequest(
         throw new Error('Response body is null');
       }
 
-      // Use streams properly with node-fetch
-      const reader = stream as any;
-      let decoder = new TextDecoder();
+      // node-fetch in Node.js environment returns a Node.js stream
+      // Cast to any to avoid TypeScript issues with the stream type
+      const readable = stream as any;
       
       // Handle client disconnect
       req.on('close', () => {
-        // When client disconnects, clean up resources
-        if (reader && typeof reader.destroy === 'function') {
-          reader.destroy();
+        console.log('Client disconnected, destroying stream');
+        try {
+          if (readable && typeof readable.destroy === 'function') {
+            readable.destroy();
+          } else if (readable && typeof readable.cancel === 'function') {
+            readable.cancel();
+          }
+        } catch (error) {
+          console.error('Error destroying stream:', error);
         }
       });
       
-      // Process the stream
-      async function processStream() {
+      // Process the stream with immediate flushing
+      readable.on('data', (chunk: Buffer) => {
         try {
-          // For node-fetch, we need to handle the stream differently
-          reader.on('data', (chunk: Buffer) => {
-            // Decode the chunk and write it directly to the response
-            // This ensures we preserve the exact SSE format
-            const decodedChunk = decoder.decode(chunk, { stream: true });
-            res.write(decodedChunk);
-          });
-          
-          reader.on('end', () => {
-            // End the response when the stream is done
-            res.end();
-          });
-          
-          reader.on('error', (error: Error) => {
-            console.error('Stream error:', error);
-            res.end();
-          });
+          // Write chunk immediately and flush
+          res.write(chunk);
+          // Force flush the response buffer in development mode
+          if (typeof (res as any).flush === 'function') {
+            (res as any).flush();
+          }
         } catch (error) {
-          console.error('Error processing stream:', error);
-          res.end();
+          console.error('Error writing chunk:', error);
         }
-      }
+      });
       
-      // Start processing the stream
-      processStream();
+      readable.on('end', () => {
+        console.log('Stream ended');
+        try {
+          if (!res.writableEnded) {
+            res.end();
+          }
+        } catch (error) {
+          console.error('Error ending response:', error);
+        }
+      });
+      
+      readable.on('error', (error: Error) => {
+        console.error('Stream error:', error);
+        try {
+          if (!res.writableEnded) {
+            res.end();
+          }
+        } catch (endError) {
+          console.error('Error ending response after stream error:', endError);
+        }
+      });
       
       return; // Return early since we're handling the response as a stream
     }
