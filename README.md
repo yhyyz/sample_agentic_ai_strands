@@ -117,8 +117,8 @@ OPENAI_BASE_URL=your-model-provider-base-url(例如https://api.siliconflow.cn/v1
 # If STRANDS_MODEL_PROVIDER=bedrock, it will use models in Bedrock
 # =============================================================================
 # 使用mem0将额外增加8-10分钟的部署时间
-# 如果需要禁用mem0，可以更改`ENABLE_MEM0=false`
-ENABLE_MEM0=true
+# 如果需要启用mem0，可以更改`ENABLE_MEM0=true`
+ENABLE_MEM0=false
 
 # 如果使用海外区
 LLM_MODEL=us.amazon.nova-pro-v1:0
@@ -152,14 +152,24 @@ EMBEDDING_MODEL=Pro/BAAI/bge-m3
   }
 ```
 
-### 2.4 启动后端服务
+### 2.4 创建一个dynamodb table, 名称为`mcp_user_config_table`
+```bash
+aws dynamodb create-table \
+    --table-name mcp_user_config_table \
+    --attribute-definitions AttributeName=userId,AttributeType=S \
+    --key-schema AttributeName=userId,KeyType=HASH \
+    --billing-mode PAY_PER_REQUEST 
+```
+
+
+### 2.5 启动后端服务
 
 - 启动后端服务：
 ```bash
 bash start_all.sh
 ```
 
-### 2.5 前端
+### 2.6 前端
 **前提条件**
 - 安装Docker和Docker Compose：https://docs.docker.com/get-docker/
 - Linux下安装Docker命令：

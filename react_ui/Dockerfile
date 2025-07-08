@@ -1,6 +1,6 @@
 # 首先定义变量(必须在任何 FROM 指令前定义)
 ARG USE_CHINA_MIRROR=false
-ARG PLATFORM=linux/arm64
+ARG PLATFORM=linux/amd64
 # 定义两个不同的基础镜像阶段
 FROM --platform=$PLATFORM node:22-alpine AS base-false
 FROM --platform=$PLATFORM mirror-docker.bosicloud.com/node:22-alpine AS base-true
@@ -35,7 +35,7 @@ COPY . .
 RUN rm .env.local
 
 # Set environment variables for optimized build
-ENV NODE_ENV=production
+# ENV NODE_ENV=production
 ENV NODE_OPTIONS="--http-parser=legacy --max-http-header-size=16384 --max-old-space-size=4096"
 ENV NEXT_TELEMETRY_DISABLED=1
 ENV CI=true

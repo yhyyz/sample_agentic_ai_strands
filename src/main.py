@@ -188,14 +188,6 @@ async def get_or_create_user_session(
     
     # 从ddb中取出配置，重新初始化，如果已经存在则跳过。
     await initialize_user_servers(session)
-
-    # 如果是新会话，初始化用户的MCP服务器
-    # if not session_obj:
-    #     await initialize_user_servers(session)
-    # elif not is_in_local and session_obj: # 如果已经在全局中，但是不在本地，也需要初始化
-    #     await initialize_user_servers(session)
-    # elif not session.mcp_clients:# 如果用户的MCP服务器已经为空，则重新初始化
-    #     await initialize_user_servers(session)
     return session
 
 async def cleanup_inactive_sessions():
@@ -244,9 +236,6 @@ async def startup_event():
 
 async def shutdown_event():
     """服务器关闭时执行的任务"""
-    # 保存用户MCP配置
-    # await save_user_mcp_configs()
-    
     # 清理所有会话
     cleanup_tasks = []
     with session_lock:
@@ -476,7 +465,6 @@ async def add_mcp_server(
     user_id = session.user_id
     
     # 使用会话锁确保操作是线程安全的
-    # async with session.lock:
     if data.server_id in session.mcp_clients:
         return JSONResponse(content=AddMCPServerResponse(
             errno=-1,
@@ -590,8 +578,6 @@ async def remove_mcp_server(
     session = await get_or_create_user_session(request, auth)
     user_id = session.user_id
     
-    # 使用会话锁确保操作是线程安全的
-    # async with session.lock:
     if server_id not in session.mcp_clients:
         logger.warning(f"User {user_id} tried to remove non-existent server {server_id}")        
         # 从用户配置中删除
