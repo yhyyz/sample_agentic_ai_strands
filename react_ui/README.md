@@ -41,7 +41,7 @@ ln -s /usr/bin/docker-compose  /usr/local/bin/docker-compose
 ```
 1. 克隆仓库之后
 ```bash
-cd demo_mcp_on_amazon_bedrock/react_ui
+cd sample_agentic_ai_strands/react_ui
 ```
 
 2. 创建环境变量文件
@@ -74,44 +74,6 @@ docker-compose up -d
 ```
 
 3. 如果是本地部署，则在浏览器中访问 [http://localhost:3000/chat](http://localhost:3000/chat) 如果在ec2部署，则访问ec2 ip
-
-### Option 2.HTTPS模式部署（使用Nova Sonic实时语音对话需要）
-⚠️ 当前端使用 HTTPS 运行时，需要通过 HTTPS 连接到后端，因此后端也需要用HTTPS部署。  
-
-1. 编辑 `react_ui/.env.local` 文件（如果不存在则创建）：
-```
-# API Key for authentication
-NEXT_PUBLIC_API_KEY=123456
-
-# Base URL for MCP service - Server side (internal)
-# 使用与后端相同的协议（HTTP 或 HTTPS，这里始终保持localhost即可，不用更换其他ip）
-SERVER_MCP_BASE_URL=https://localhost:7002
-
-# Base URL for MCP service - Client side (now uses Next.js API routes)
-NEXT_PUBLIC_MCP_BASE_URL=/api
-
-# Base URL for direct client-side API access (用于WebSockets，如果是在ec2部署，这里要替换成ec2 ip)
-NEXT_PUBLIC_API_BASE_URL=https://<ec2_ip>:7002
-```
-
-2. 确保以下环境变量的协议（http:// 或 https://）与后端服务器的实际运行协议匹配：
-   - `SERVER_MCP_BASE_URL`：用于服务器端API请求
-   - `NEXT_PUBLIC_API_BASE_URL`：用于WebSocket连接和客户端直接API请求
-
-3. 如果您使用 `start_all.sh` 脚本启动应用程序，请更改`.env` 文件中的 `USE_HTTPS=1`。
-
-4. 启动访问UI
-在`react_ui`目录中运行：
-```
-docker-compose up mcpui-https -d
-```
-
-5. 打开浏览器并导航至：
-```
-https://<ec2_ip>:3000/chat  # React UI 前端
-```
-
-注意：您可能会看到关于证书是自签名的浏览器警告。对于本地开发，您可以通过点击"高级"，然后"继续前往 localhost（不安全）"安全地继续。由于前端和后端使用相同的证书，一旦您信任了一个服务的证书，另一个服务也会被自动信任。
 
 
 #### 其他Docker常用命令

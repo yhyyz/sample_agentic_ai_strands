@@ -19,7 +19,7 @@ from mcp_client_strands import StrandsMCPClient
 from strands.agent.conversation_manager import SlidingWindowConversationManager
 from botocore.config import Config
 from custom_tools import mem0_memory
-
+from strands.telemetry import StrandsTelemetry
 from constant import *
 load_dotenv()  # load environment variables from .env
 
@@ -30,11 +30,12 @@ secret_key = os.environ.get("LANGFUSE_SECRET_KEY")
 langfuse_endpoint =  os.environ.get("LANGFUSE_HOST")
 # Set up endpoint
 if public_key and secret_key and langfuse_endpoint:
-    otel_endpoint = langfuse_endpoint + "/api/public/otel/v1/traces"
+    otel_endpoint = langfuse_endpoint + "/api/public/otel"
     auth_token = base64.b64encode(f"{public_key}:{secret_key}".encode()).decode()
     os.environ["OTEL_EXPORTER_OTLP_ENDPOINT"] = otel_endpoint
     os.environ["OTEL_EXPORTER_OTLP_HEADERS"] = f"Authorization=Basic {auth_token}"
-
+    strands_telemetry = StrandsTelemetry()
+    strands_telemetry.setup_otlp_exporter()      # Send traces to OTLP endpoint
 
 window_size = 100
 logging.basicConfig(
