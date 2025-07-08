@@ -79,6 +79,8 @@ cp env.example .env
 使用vim 打开.env文件编辑：
 ⚠️如果在x86服务器做编译，可以设置PLATFORM=linux/amd64，否则跨平台编译速度慢好几倍
 ```bash
+# for Development mode - ddb for user config
+ddb_table=mcp_user_config_table
 # for Development mode - API Key for server authentication, if you deploy with CDK, it will create a Api key automatically
 API_KEY=123456
 # =============================================================================
