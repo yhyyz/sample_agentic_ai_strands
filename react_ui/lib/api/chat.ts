@@ -233,6 +233,11 @@ export function processStreamResponse(
       // Try parsing the JSON
       const jsonData = JSON.parse(data);
       
+      // Skip connection establishment events (added by proxy for dev mode)
+      if (jsonData.type === 'connection' && jsonData.status === 'established') {
+        return;
+      }
+      
       // Extract the message ID if available, to help with buffering
       const messageId = jsonData.id || '';
       

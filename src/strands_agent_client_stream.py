@@ -144,12 +144,7 @@ class StrandsAgentClientStream(StrandsAgentClient):
                 thread_id = agent_thread.ident
                 if thread_id:
                     logger.info(f"Agent thread {thread_id} for stream {stream_id} is still running")
-                
-                # Note: In Python, we cannot forcefully kill threads, but we can:
-                # 1. Set stop events (already done)
-                # 2. Clear references to allow garbage collection
-                # 3. Log the situation for monitoring
-                
+
                 # The daemon threads will be terminated when the main process exits
                 # But we should clean up our references
                 logger.warning(f"Agent thread for stream {stream_id} may have daemon threads still running")
@@ -198,7 +193,7 @@ class StrandsAgentClientStream(StrandsAgentClient):
                 if stop_event.is_set():
                     logger.info(f"Agent stream worker for {stream_id} stopped by event")
                     break
-                    
+                # logger.info(event)
                 # Put event in queue for main thread to consume
                 stream_queue.put(event)
                 
@@ -405,7 +400,7 @@ class StrandsAgentClientStream(StrandsAgentClient):
             try:
                 # Use shorter timeout and yield control more frequently
                 event = stream_queue.get(timeout=0.1)
-                
+                # logger.info(event)
                 # Check if stream should stop
                 if stream_id in self.stop_flags and self.stop_flags[stream_id]:
                     logger.info(f"Stream {stream_id} was requested to stop")
