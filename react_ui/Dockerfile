@@ -35,7 +35,7 @@ COPY . .
 RUN rm .env.local
 
 # Set environment variables for optimized build
-ENV NODE_ENV=production
+# ENV NODE_ENV=production
 ENV NODE_OPTIONS="--http-parser=legacy --max-http-header-size=16384 --max-old-space-size=4096"
 ENV NEXT_TELEMETRY_DISABLED=1
 ENV CI=true
