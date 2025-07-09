@@ -105,14 +105,23 @@ OPENAI_BASE_URL=https://api.siliconflow.cn/v1
   }
 ```
 
-### 2.4 Starting the Backend Service
+### 2.4 Create a DynamoDB Table Named mcp_user_config_table
+```bash
+aws dynamodb create-table \
+    --table-name mcp_user_config_table \
+    --attribute-definitions AttributeName=userId,AttributeType=S \
+    --key-schema AttributeName=userId,KeyType=HASH \
+    --billing-mode PAY_PER_REQUEST 
+```
+
+### 2.5 Starting the Backend Service
 
 - Start the backend service:
 ```bash
 bash start_all.sh
 ```
 
-### 2.5 Frontend
+### 2.6 Frontend
 **Prerequisites**
 - Install Docker and Docker Compose: https://docs.docker.com/get-docker/
 - Docker installation command for Linux:
@@ -157,7 +166,7 @@ docker-compose up -d --build
 ```
 
 ## 3. Installation Method (Production Mode, AWS ECS Deployment)
-Please refer to the [CDK Deployment Guide](cdk/README-CDK.md)
+Please refer to the [CDK Deployment Guide](cdk/README-CDK_en.md)
 ![img](assets/ecs_fargate_architecture.png)
 This demo's deployment architecture follows AWS best practices, deploying the application in private subnets, providing public access through a load balancer, and using Fargate for serverless container management. The deployment architecture includes the following main AWS components:
 
