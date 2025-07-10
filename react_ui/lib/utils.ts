@@ -23,9 +23,28 @@ export function extractThinking(content: string): { thinking: string | null; cle
 }
 
 /**
+ * Extract tool name from message and return cleaned content
+ */
+export function extracToolName(content: string): { toolInput: string | null; cleanContent: string } {
+  // console.log(`extractToolInput:${content}`)
+  const toolNameRegex = /<tool_name>(.*?)<\/tool_name>/s;
+  const match = content.match(toolNameRegex);
+  
+  if (match) {
+    const toolInput = match[1];
+    // Remove the tool input tags and content from the main content
+    const cleanContent = content.replace(toolNameRegex, '').trim();
+    return { toolInput, cleanContent };
+  }
+  
+  return { toolInput: null, cleanContent: content };
+}
+
+/**
  * Extract tool input content from message and return cleaned content
  */
 export function extractToolInput(content: string): { toolInput: string | null; cleanContent: string } {
+  // console.log(`extractToolInput:${content}`)
   const toolInputRegex = /<tool_input>(.*?)<\/tool_input>/s;
   const match = content.match(toolInputRegex);
   

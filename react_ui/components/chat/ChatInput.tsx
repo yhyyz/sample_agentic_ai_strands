@@ -2,7 +2,7 @@
 
 import { useState, FormEvent, useRef, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
-import { useStore, Message } from '@/lib/store';
+import { useStore, Message, ToolCall } from '@/lib/store';
 import { v4 as uuidv4 } from 'uuid';
 import { sendChatRequest, processStreamResponse, stopStream } from '@/lib/api/chat';
 import { extractThinking, extractToolUse, extractToolInput} from '@/lib/utils';
@@ -207,7 +207,7 @@ export function ChatInput({ disabled = false }: ChatInputProps) {
           let fullResponse = '';
           let fullThinking = '';
           let toolUseData: any[] = [];
-          let fullToolInput = '';
+          let fullToolInput:any[] = [];
           
           // Set streaming state and save stream ID
           setIsStreaming(true);
@@ -232,24 +232,26 @@ export function ChatInput({ disabled = false }: ChatInputProps) {
               const { toolInput, cleanContent } = extractToolInput(fullResponse);
               fullResponse = cleanContent;
               if (toolInput) {
-                fullToolInput += toolInput + "\n";
+                fullToolInput = [...fullToolInput,toolInput]
               }
+              console.log(`fullToolInput:${fullToolInput}`)
               
               // Update message with content, thinking, and tool_input if available
               updateLastMessage(
                 cleanContent || '',
                 fullThinking.trim() ? fullThinking : undefined,
                 undefined,
-                fullToolInput.trim() ? fullToolInput : undefined
-              );
+                undefined,
+                fullToolInput.length ? fullToolInput:undefined );
             },
             // Tool use handler
             (toolUse) => {
               try {
                 const toolUseJson = JSON.parse(JSON.parse(toolUse));
-                if (Array.isArray(toolUseJson)) {
-                  toolUseData = toolUseJson;
-                  // console.log("toolUseData:", toolUseJson);
+                console.log(`ontoolUseData:${toolUseJson}`);
+ 
+                toolUseData = toolUseJson[1];
+
 
                   // Update last assistant message with tool use data
                 // Update last message with tool use data
@@ -258,16 +260,16 @@ export function ChatInput({ disabled = false }: ChatInputProps) {
                 const lastMessageIndex = messages.length - 1;
                 if (lastMessageIndex >= 0 && messages[lastMessageIndex].role === 'assistant') {
                   const currentContent = messages[lastMessageIndex].content;
-                  const currentThinking = messages[lastMessageIndex].thinking;
-                  const currentToolInput = messages[lastMessageIndex].toolInput;
+                  // const currentThinking = messages[lastMessageIndex].thinking;
+                  // const currentToolInput = messages[lastMessageIndex].toolInput;
                   updateLastMessage(
                     currentContent || '',
-                    currentThinking,
-                    [ ...messages[lastMessageIndex].toolUse || [], ...toolUseData],
-                    currentToolInput);
+                    undefined,
+                    [ ...messages[lastMessageIndex].toolUse || [], toolUseData],
+                    undefined);
                 }
                   // console.log("messages:", messages);
-                }
+
               } catch (error) {
                 console.error('Failed to parse tool use data:', error);
               }
@@ -281,7 +283,7 @@ export function ChatInput({ disabled = false }: ChatInputProps) {
                     const currentContent = messages[lastMessageIndex].content;
                     const currentToolUse = messages[lastMessageIndex].toolUse;
                     const currentToolInput = messages[lastMessageIndex].toolInput;
-                    updateLastMessage(currentContent, thinking, currentToolUse, currentToolInput);
+                    updateLastMessage(currentContent, thinking, undefined, undefined);
                   }
                 }
               },
@@ -304,22 +306,25 @@ export function ChatInput({ disabled = false }: ChatInputProps) {
             },
             // Tool input handler - directly sent from server
             (toolInput) => {
-              if (toolInput && toolInput.trim()) {
-                fullToolInput += toolInput;
-                const { messages } = useStore.getState();
+              console.log(`ontoolInput:${toolInput}`)
+            },
+            (toolName) => {
+              console.log(`ontoolName:${toolName}`);
+               const { messages } = useStore.getState();
                 const lastMessageIndex = messages.length - 1;
                 if (lastMessageIndex >= 0 && messages[lastMessageIndex].role === 'assistant') {
                   const currentContent = messages[lastMessageIndex].content;
-                  const currentThinking = messages[lastMessageIndex].thinking;
-                  const currentToolUse = messages[lastMessageIndex].toolUse;
+                  const currentToolName = messages[lastMessageIndex].toolName;
                   updateLastMessage(
-                    currentContent,
-                    currentThinking,
-                    currentToolUse,
-                    fullToolInput.trim()
+                    currentContent || '',
+                    undefined,
+                    undefined,
+                    [ ...currentToolName || [], toolName],
+                    undefined,
+                    undefined
                   );
                 }
-              }
+
             }
           );
           
@@ -372,7 +377,8 @@ export function ChatInput({ disabled = false }: ChatInputProps) {
           content: cleanContent,
           thinking: thinking || undefined,
           toolUse: toolUseData,
-          toolInput: toolInput || undefined
+          toolName: toolUseData,
+          toolInput: toolInput ? [toolInput] : undefined
         });
       }
     } catch (error) {
@@ -408,56 +414,158 @@ export function ChatInput({ disabled = false }: ChatInputProps) {
     });
   };
   
+  // Convert toolName, toolInput and toolUse data to ToolCall format
+  // 数据流：toolNameArray -> toolInputArray -> toolUseArray
+  // const convertToToolCalls = (toolNameArray?: any[], toolInputArray?: any[], toolUseArray?: any[]): ToolCall[] => {
+  //   const toolCalls: ToolCall[] = [];
+    
+  //   // 解析各个数据源
+  //   const toolNames = toolNameArray || [];
+  //   const toolInputs = toolInputArray || [];
+    
+  //   // 解析toolUse数据（工具结果）
+  //   let toolResults: any[] = [];
+  //   if (toolUseArray && toolUseArray.length > 0) {
+  //     try {
+  //       toolResults = toolUseArray.map(item =>
+  //         typeof item === 'string' ? JSON.parse(item) : item
+  //       );
+  //     } catch (e) {
+  //       console.warn('Failed to parse toolUseArray:', toolUseArray);
+  //     }
+  //   }
+
+  //   // 确定最大工具数量
+  //   const maxToolCount = Math.max(toolNames.length, toolInputs.length, toolResults.length);
+    
+  //   // 为每个工具创建ToolCall对象
+  //   for (let index = 0; index < maxToolCount; index++) {
+  //     const toolName = toolNames[index];
+  //     const toolInput = toolInputs[index];
+  //     const toolResult = toolResults[index];
+      
+  //     // 确定工具状态和内容
+  //     let status: 'pending' | 'running' | 'completed' | 'error' = 'pending';
+  //     let name = 'unknown_tool';
+  //     let toolArguments = {};
+  //     let result: any = undefined;
+  //     let endTime: number | undefined = undefined;
+      
+  //     // 根据当前接收到的数据确定状态
+  //     // 阶段1：只有toolName - 工具开始执行
+  //     if (toolName && !toolInput && !toolResult) {
+  //       status = 'running';
+  //       name = toolName;
+  //       toolArguments = {};
+  //     }
+  //     // 阶段2：有toolName和toolInput - 工具正在执行，显示参数
+  //     else if (toolName && toolInput && !toolResult) {
+  //       status = 'running';
+  //       name = toolName;
+  //       toolArguments = toolInput;
+  //     }
+  //     // 阶段3：有toolResult - 工具执行完成
+  //     else if (toolResult) {
+  //       status = toolResult.tool_result?.status === 'success' ? 'completed' : 'error';
+  //       name = toolResult.tool_name || toolName || 'unknown_tool';
+  //       toolArguments = toolInput || toolResult.input || {};
+  //       result = toolResult.tool_result?.content?.[0]?.text || 'No result content';
+  //       endTime = Date.now() - (index * 500);
+  //     }
+  //     // 其他情况的fallback处理
+  //     else if (toolInput) {
+  //       status = 'running';
+  //       name = toolName || 'unknown_tool';
+  //       toolArguments = toolInput;
+  //     }
+  //     else if (toolName) {
+  //       status = 'running';
+  //       name = toolName;
+  //       toolArguments = {};
+  //     }
+      
+  //     // 创建ToolCall对象
+  //     const toolCall: ToolCall = {
+  //       id: toolResult?.toolUseId || `tool-${index}`,
+  //       name,
+  //       arguments: toolArguments,
+  //       status,
+  //       startTime: Date.now() - (index * 1000),
+  //       ...(endTime && { endTime }),
+  //       ...(result && { result })
+  //     };
+      
+  //     toolCalls.push(toolCall);
+  //   }
+    
+  //   return toolCalls;
+  // };
+
   // Handle tool use data from WebSocket
   const handleToolUse = (toolUseData: any) => {
     console.log('Tool use data received:', toolUseData);
-    const { messages } = useStore.getState();
-    // Create a new assistant message if one doesn't exist
-    const lastMessage = messages[messages.length - 1];
-    // console.log('lastMessage:',lastMessage)
-    if (!lastMessage || lastMessage.role !== 'assistant') {
-      addMessage({
-        role: 'assistant',
-        content: '[using tool]',
-        toolInput:toolUseData,
-        toolUse: [toolUseData]
-      });
-    } else {
-      // Update the last assistant message with the tool use data
-      const currentToolUse = lastMessage.toolUse || [];
-      updateLastMessage(
-        lastMessage.content || '[using tool]',
-        lastMessage.thinking,
-        [...currentToolUse, toolUseData],
-        lastMessage.toolInput
-      );
-    }
+    return
+    // const { messages } = useStore.getState();
+    // // Create a new assistant message if one doesn't exist
+    // const lastMessage = messages[messages.length - 1];
+    // // console.log('lastMessage:',lastMessage)
+    // if (!lastMessage || lastMessage.role !== 'assistant') {
+    //   const toolCalls = convertToToolCalls(undefined, undefined, [toolUseData]);
+    //   addMessage({
+    //     role: 'assistant',
+    //     content: '[using tool]',
+    //     toolInput: toolUseData,
+    //     toolUse: [toolUseData],
+    //     toolCalls: toolCalls
+    //   });
+    // } else {
+    //   // Update the last assistant message with the tool use data
+    //   const currentToolUse = lastMessage.toolUse || [];
+    //   const updatedToolUse = [...currentToolUse, toolUseData];
+    //   const toolCalls = convertToToolCalls(undefined, undefined, updatedToolUse);
+      
+    //   updateLastMessage(
+    //     lastMessage.content || '[using tool]',
+    //     lastMessage.thinking,
+    //     updatedToolUse,
+    //     [lastMessage.toolInput],
+    //     toolCalls
+    //   );
+    // }
   };
   
   // Handle tool result data from WebSocket
   const handleToolResult = (toolResultData: any) => {
     console.log('Tool result data received:', toolResultData);
-    const { messages } = useStore.getState();
-    // Find the corresponding tool use by ID
-    const lastMessage = messages[messages.length - 1];
-    // console.log('lastMessage:',lastMessage)
-    if (lastMessage && lastMessage.role === 'assistant' && lastMessage.toolUse) {
-      const toolUse = lastMessage.toolUse;
+    // return
+    // const { messages } = useStore.getState();
+    // // Find the corresponding tool use by ID
+    // const lastMessage = messages[messages.length - 1];
+    // // console.log('lastMessage:',lastMessage)
+    // if (lastMessage && lastMessage.role === 'assistant' && lastMessage.toolUse) {
+    //   const toolUse = lastMessage.toolUse;
       
-      // Create a formatted tool result object
-      const toolResult = {
-        toolUseId: toolResultData.toolUseId,
-        content: toolResultData.content || []
-      };
+    //   // Create a formatted tool result object
+    //   const toolResult = {
+    //     toolUseId: toolResultData.toolUseId,
+    //     content: toolResultData.content || []
+    //   };
       
-      // Add the tool result to the message
-      updateLastMessage(
-        lastMessage.content || '',
-        lastMessage.thinking,
-        [...toolUse, toolResult],
-        lastMessage.toolInput
-      );
-    }
+    //   // Update toolUse array
+    //   const updatedToolUse = [...toolUse, toolResult];
+      
+    //   // Convert to toolCalls format
+    //   const toolCalls = convertToToolCalls(undefined, undefined, updatedToolUse);
+      
+    //   // Add the tool result to the message
+    //   updateLastMessage(
+    //     lastMessage.content || '',
+    //     lastMessage.thinking,
+    //     updatedToolUse,
+    //     [lastMessage.toolInput],
+    //     toolCalls
+    //   );
+    // }
   };
   
   const toggleVoiceMode = () => {

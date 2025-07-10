@@ -192,7 +192,8 @@ export function processStreamResponse(
   onThinking: (thinking: string) => void,
   onError: (error: string) => void,
   onDone?: () => void,
-  onToolInput?: (toolInput: string) => void
+  onToolInput?: (toolInput: string) => void,
+  onToolName?:(toolName: string) => void
 ) {
   const reader = response.body?.getReader();
   const decoder = new TextDecoder();
@@ -232,7 +233,6 @@ export function processStreamResponse(
     try {
       // Try parsing the JSON
       const jsonData = JSON.parse(data);
-      
       // Skip connection establishment events (added by proxy for dev mode)
       if (jsonData.type === 'connection' && jsonData.status === 'established') {
         return;
@@ -257,6 +257,10 @@ export function processStreamResponse(
       const messageExtras = jsonData.choices?.[0]?.message_extras || {};
       if ('tool_use' in messageExtras) {
         onToolUse(JSON.stringify(messageExtras.tool_use));
+      }
+
+      if ('tool_name' in messageExtras && onToolName) {
+        onToolName(messageExtras.tool_name);
       }
       
       // Extract thinking content if present

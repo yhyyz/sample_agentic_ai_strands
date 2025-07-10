@@ -793,7 +793,16 @@ async def stream_chat_response(data: ChatCompletionRequest, session: UserSession
                 # 处理不同的事件类型
                 if response["type"] == "message_start":
                     event_data["choices"][0]["delta"] = {"role": "assistant"}
-                
+                    
+                elif response["type"] == "block_start":
+                    block_start = response["data"]
+                    if "toolUse" in block_start.get("start", {}):
+                        # text = f"<tool_name>{block_start["start"]["toolUse"]["name"]}</tool_name>"
+                        # event_data["choices"][0]["delta"] = {"content": text }
+                        event_data["choices"][0]["message_extras"] = {
+                            "tool_name": block_start["start"]["toolUse"]["name"]
+                        }
+                    
                 elif response["type"] == "block_delta":
                     if "text" in response["data"]["delta"]:
                         text = ""
