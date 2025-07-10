@@ -35,8 +35,8 @@ Resources:
     Properties:
       Tags:
         - Key: Name
-          Value: MCP-workshop
-      InstanceType: t3.xlarge
+          Value: Strands-workshop
+      InstanceType: t3.large
       ImageId: !Sub '{{resolve:ssm:/aws/service/canonical/ubuntu/server/22.04/stable/current/amd64/hvm/ebs-gp2/ami-id}}'
       SecurityGroups:
         - !Ref MCPSecurityGroup
@@ -108,7 +108,7 @@ Resources:
 
             #  restart service
             systemctl restart code-server
-            sudo shutdown now
+            # sudo shutdown now
           
 Outputs:
   InstanceId:
