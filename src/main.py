@@ -634,9 +634,9 @@ async def stream_chat_response(data: ChatCompletionRequest, session: UserSession
         """独立的心跳发送任务"""
         try:
             while not heartbeat_stop_event.is_set():
-                await asyncio.sleep(30)  # 每30秒发送一次心跳，减少频率
+                await asyncio.sleep(10)  # 每10秒发送一次心跳，减少频率
                 if not heartbeat_stop_event.is_set():
-                    logger.debug("sse heartbeat")  # 改为debug级别，减少日志噪音
+                    logger.info("sse heartbeat")  # 改为debug级别，减少日志噪音
                     yield ": heartbeat\n\n"
         except asyncio.CancelledError:
             pass

@@ -48,7 +48,7 @@ COPY uv.lock ./
 RUN uv sync 
 
 # forkrepo，支持r1 reasoning content
-RUN uv pip install git+https://github.com/xiehust/sdk-python.git@gcr
+# RUN uv pip install git+https://github.com/xiehust/sdk-python.git@gcr
 
 # forkrepo, 修复mem0不支持nova问题
 RUN uv pip install git+https://github.com/xiehust/mem0.git
