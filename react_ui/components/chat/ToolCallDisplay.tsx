@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import { cn } from '@/lib/utils';
 import { ChevronDown, ChevronRight, Search, Code, Database, Globe, FileText, Settings, Loader2 } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
+import remarkGfm from 'remark-gfm';
 import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter';
 import { oneLight } from 'react-syntax-highlighter/dist/esm/styles/prism';
 
@@ -91,9 +92,9 @@ export function ToolCallDisplay({ toolCall, className }: ToolCallDisplayProps) {
     <div className={cn(
       "border rounded-lg overflow-hidden transition-all duration-300 ease-in-out",
       isRunning && "border-blue-300 bg-blue-50/50 dark:border-blue-600 dark:bg-blue-900/20 shadow-lg shadow-blue-500/20",
-      isCompleted && "border-green-300 bg-green-50/50 dark:border-green-600 dark:bg-green-900/20",
-      hasError && "border-red-300 bg-red-50/50 dark:border-red-600 dark:bg-red-900/20",
-      !isRunning && !isCompleted && !hasError && "border-gray-200 bg-gray-50/50 dark:border-gray-700 dark:bg-gray-800/50",
+      isCompleted && "border-green-300 bg-green-50/50 dark:border-green-600 dark:bg-green-900/20 shadow-lg shadow-green-500/20",
+      hasError && "border-red-300 bg-red-50/50 dark:border-red-600 dark:bg-red-900/20 shadow-lg shadow-red-500/20",
+      !isRunning && !isCompleted && !hasError && "border-gray-200 bg-gray-50/50 dark:border-gray-700 dark:bg-gray-800/50 shadow-lg shadow-gray-500/10",
       className
     )}>
       {/* Tool header */}
@@ -217,6 +218,7 @@ export function ToolCallDisplay({ toolCall, className }: ToolCallDisplayProps) {
                   {typeof toolCall.result === 'string' ? (
                     <ReactMarkdown
                       className="prose prose-sm max-w-none dark:prose-invert"
+                      remarkPlugins={[remarkGfm]}
                       components={{
                         code(props) {
                           const { children, className, ...rest } = props;

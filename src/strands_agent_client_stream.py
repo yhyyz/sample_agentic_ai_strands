@@ -243,7 +243,7 @@ class StrandsAgentClientStream(StrandsAgentClient):
             loop.close()
             logger.info(f"Monitor thread for stream {stream_id} terminated")
     
-    async def _process_stream_response(self, stream_id: Optional[str], response) -> AsyncIterator[Dict]:
+    async def   _process_stream_response(self, stream_id: Optional[str], response) -> AsyncIterator[Dict]:
         """Process the raw response from converse_stream"""
         last_yield_time = time.time()
         async for chunk in response:
@@ -398,9 +398,7 @@ class StrandsAgentClientStream(StrandsAgentClient):
         
         while True:
             try:
-                # Use shorter timeout and yield control more frequently
-                event = stream_queue.get(timeout=0.1)
-                # logger.info(event)
+                event = stream_queue.get()
                 # Check if stream should stop
                 if stream_id in self.stop_flags and self.stop_flags[stream_id]:
                     logger.info(f"Stream {stream_id} was requested to stop")

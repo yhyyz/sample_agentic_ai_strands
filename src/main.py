@@ -806,39 +806,42 @@ async def stream_chat_response(data: ChatCompletionRequest, session: UserSession
                 elif response["type"] == "block_delta":
                     if "text" in response["data"]["delta"]:
                         text = ""
-                        if thinking_text_index >= 1 and thinking_start:    
-                            thinking_start = False
-                            text = "</thinking>"
+                        # if thinking_text_index >= 1 and thinking_start:    
+                        #     thinking_start = False
+                        #     text = "</thinking>"
                         text += response["data"]["delta"]["text"]
                         current_content += text
                         event_data["choices"][0]["delta"] = {"content": text}
                         thinking_text_index = 0
                         
                     if "toolUse" in response["data"]["delta"]:
-                        text = ""
+                        # text = ""
                         if not tooluse_start:    
                             tooluse_start = True
-                            text = "<tool_input>"
-                        text += response["data"]["delta"]["toolUse"]['input']
-                        current_content += text
-                        event_data["choices"][0]["delta"] = {"content": text}
+                        #     text = "<tool_input>"
+                        # text += response["data"]["delta"]["toolUse"]['input']
+                        # current_content += text
+                        # event_data["choices"][0]["delta"] = {"content": text}
+                        event_data["choices"][0]["delta"] = {"toolinput_content": response["data"]["delta"]["toolUse"]['input']}
                         
                     if "reasoningContent" in response["data"]["delta"]:
                         if 'text' in response["data"]["delta"]["reasoningContent"]:
-                            if not thinking_start:
-                                text = "<thinking>" + response["data"]["delta"]["reasoningContent"]["text"]
-                                thinking_start = True
-                            else:
-                                text = response["data"]["delta"]["reasoningContent"]["text"]
-                            event_data["choices"][0]["delta"] = {"content": text}
-                            thinking_text_index += 1
+                            # if not thinking_start:
+                            #     text = "<thinking>" + response["data"]["delta"]["reasoningContent"]["text"]
+                            #     thinking_start = True
+                            # else:
+                            #     text = response["data"]["delta"]["reasoningContent"]["text"]
+                            # event_data["choices"][0]["delta"] = {"content": text}
+                            # thinking_text_index += 1
+                            
+                            event_data["choices"][0]["delta"] = {"reasoning_content": response["data"]["delta"]["reasoningContent"]["text"]}
+                            
 
                 elif response["type"] == "block_stop":
                     if tooluse_start:
-                        text =  "</tool_input>"
-                        current_content += text
                         tooluse_start = False
-                        event_data["choices"][0]["delta"] = {"content": text}
+                        event_data["choices"][0]["delta"] = {"toolinput_content": "<END>"}
+                #         event_data["choices"][0]["delta"] = {"content": text}
                         
                 elif response["type"] in [ "message_stop" ,"result_pairs"]:
                     event_data["choices"][0]["finish_reason"] = response["data"]["stopReason"]

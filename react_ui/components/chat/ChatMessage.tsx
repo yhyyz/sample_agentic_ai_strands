@@ -1,18 +1,51 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Message, ToolCall } from '@/lib/store';
 import { cn } from '@/lib/utils';
 import ReactMarkdown from 'react-markdown';
+import remarkGfm from 'remark-gfm';
 import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter';
 import { vscDarkPlus, oneLight } from 'react-syntax-highlighter/dist/esm/styles/prism';
-import { FileText, ChevronDown, ChevronRight, Lightbulb } from 'lucide-react';
+import { FileText, ChevronDown, ChevronRight, Lightbulb, Loader2 } from 'lucide-react';
 import { ToolCallDisplay } from './ToolCallDisplay';
 
 interface ChatMessageProps {
   message: Message;
-  isLoading?: boolean;
+  isRunning?: boolean;
 }
+
+// Loading dots animation component (same as ToolCallDisplay)
+const LoadingDots = () => {
+  const [dots, setDots] = useState('');
+  
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setDots(prev => {
+        if (prev === '...') return '';
+        return prev + '.';
+      });
+    }, 500);
+    
+    return () => clearInterval(interval);
+  }, []);
+  
+  return <span className="inline-block w-6">{dots}</span>;
+};
+
+// Animated progress bar (same as ToolCallDisplay)
+const ProgressBar = ({ isActive }: { isActive: boolean }) => {
+  return (
+    <div className="w-full h-1 bg-gray-200 dark:bg-gray-700 rounded-full overflow-hidden">
+      <div
+        className={cn(
+          "h-full bg-blue-500 transition-all duration-1000 ease-in-out",
+          isActive ? "w-full animate-pulse" : "w-0"
+        )}
+      />
+    </div>
+  );
+};
 
 // Convert toolName, toolInput and toolUse data to ToolCall format
 // 数据流：toolNameArray -> toolInputArray -> toolUseArray
@@ -101,33 +134,9 @@ const convertToToolCalls = (toolNameArray?: any[], toolInputArray?: any[], toolU
   return toolCalls;
 };
 
-export function ChatMessage({ message, isLoading = false }: ChatMessageProps) {
+export function ChatMessage({ message, isRunning = false }: ChatMessageProps) {
   const [showThinking, setShowThinking] = useState(false);
-  
-  // Debug logging to see what data we're receiving
-  if (message.role === "assistant"){
-    console.log('ChatMessage received:', {
-      role: message.role,
-      hasContent: !!message.content,
-      hasThinking: !!message.thinking,
-      hasToolUse: !!message.toolUse,
-      toolCallsCount: message.toolCalls?.length || 0,
-      toolUseCount: message.toolUse?.length || 0,
-      toolName:message.toolName,
-      toolInput:message.toolInput,
-      toolUseData: message.toolUse, // Add actual toolUse data for debugging
-      toolCallsData: message.toolCalls // Add actual toolCalls data for debugging
-    });
-  }
-  
-  // Additional debug for conversion
-    console.log('Converting toolUse to toolCalls:', {
-      originalToolName: message.toolName,
-      originalToolUse: message.toolUse,
-      toolInput: message.toolInput,
-      convertedToolCalls: convertToToolCalls(message.toolName?message.toolName:undefined ,message.toolInput ? message.toolInput : undefined, message.toolUse)
-    });
-  
+  // console.log("isRunning:",isRunning)
   return (
     <div className={cn(
       "flex w-full items-start gap-4 py-4",
@@ -170,12 +179,24 @@ export function ChatMessage({ message, isLoading = false }: ChatMessageProps) {
               >
                 {/* Thinking icon with status indicator */}
                 <div className="relative">
-                  <div className="p-1.5 rounded-md bg-blue-100 text-blue-600 dark:bg-blue-900/50 dark:text-blue-400 transition-colors">
-                    <Lightbulb className="h-3.5 w-3.5" />
+                  <div className={cn(
+                    "p-1.5 rounded-md transition-colors",
+                    message.isThinking && "bg-blue-100 text-blue-600 dark:bg-blue-900/50 dark:text-blue-400",
+                    !message.isThinking && "bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-400"
+                  )}>
+                    {message.isThinking ? (
+                      <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                    ) : (
+                      <Lightbulb className="h-3.5 w-3.5" />
+                    )}
                   </div>
                   
                   {/* Status dot */}
-                  <div className="absolute -top-0.5 -right-0.5 w-2.5 h-2.5 rounded-full border border-white dark:border-gray-800 bg-blue-500" />
+                  <div className={cn(
+                    "absolute -top-0.5 -right-0.5 w-2.5 h-2.5 rounded-full border border-white dark:border-gray-800",
+                    message.isThinking && "bg-blue-500 animate-pulse",
+                    !message.isThinking && "bg-gray-400"
+                  )} />
                 </div>
                 
                 {/* Thinking info */}
@@ -184,6 +205,11 @@ export function ChatMessage({ message, isLoading = false }: ChatMessageProps) {
                     <h4 className="font-medium text-sm text-blue-800 dark:text-blue-200">
                       Thinking
                     </h4>
+                    {message.isThinking && (
+                      <span className="text-xs text-blue-600 dark:text-blue-400 font-medium">
+                        Thinking<LoadingDots />
+                      </span>
+                    )}
                   </div>
                 </div>
                 
@@ -210,6 +236,13 @@ export function ChatMessage({ message, isLoading = false }: ChatMessageProps) {
                 </div>
               )}
             </div>
+            
+            {/* Progress bar for thinking state */}
+            {message.isThinking && (
+              <div className="mt-2">
+                <ProgressBar isActive={message.isThinking} />
+              </div>
+            )}
           </div>
         )}
         
@@ -260,6 +293,7 @@ export function ChatMessage({ message, isLoading = false }: ChatMessageProps) {
               // Regular markdown content
               <ReactMarkdown
                 className="prose prose-sm max-w-none dark:prose-invert"
+                remarkPlugins={[remarkGfm]}
                 components={{
                   code(props) {
                     const { children, className, node, ...rest } = props;
@@ -284,7 +318,7 @@ export function ChatMessage({ message, isLoading = false }: ChatMessageProps) {
                   }
                 }}
               >
-                {message.content + (isLoading ? '▌' : '')}
+                {message.content + ((isRunning && message.role === 'assistant') ? '▌' : '')}
               </ReactMarkdown>
             ) : (
               // Structured content (array of ContentItem)
@@ -295,6 +329,7 @@ export function ChatMessage({ message, isLoading = false }: ChatMessageProps) {
                     {item.type === 'text' && item.text && (
                       <ReactMarkdown
                         className="prose prose-sm max-w-none dark:prose-invert"
+                        remarkPlugins={[remarkGfm]}
                         components={{
                           code(props) {
                             const { children, className, node, ...rest } = props;
@@ -349,14 +384,14 @@ export function ChatMessage({ message, isLoading = false }: ChatMessageProps) {
                   </div>
                 ))}
                 
-                {isLoading && <span className="animate-pulse">▌</span>}
+                {isRunning && <span className="animate-pulse">▌</span>}
               </div>
             )}
           </div>
         )}
         
         {/* Loading indicator for messages without content but with tool calls */}
-        {!message.content && isLoading && (
+        {!message.content && isRunning && (
           <div className="flex items-center gap-2 text-sm text-gray-500 dark:text-gray-400">
             <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-500"></div>
             <span>Processing...</span>

@@ -29,6 +29,7 @@ export type Message = {
   role: 'system' | 'user' | 'assistant'
   content: string | ContentItem[]
   thinking?: string
+  isThinking?: boolean
   toolUse?: any[]
   toolName?: any[]
   toolInput?: any[]
@@ -50,7 +51,7 @@ interface ChatStore {
   // Messages
   messages: Message[]
   addMessage: (message: Message) => void
-  updateLastMessage: (content: string | ContentItem[], thinking?: string, toolUse?: any[],toolName?:any[], toolInput?: any[], toolCalls?: ToolCall[]) => void
+  updateLastMessage: (content: string | ContentItem[], thinking?: string, toolUse?: any[],toolName?:any[], toolInput?: any[], toolCalls?: ToolCall[], isThinking?: boolean) => void
   clearMessages: () => void
   
   // Settings
@@ -99,7 +100,7 @@ Please use the maximum computational power and token limit available in a single
       addMessage: (message) => set((state) => ({ 
         messages: [...state.messages, message] 
       })),
-      updateLastMessage: (content, thinking, toolUse,toolName, toolInput, toolCalls) => set((state) => {
+      updateLastMessage: (content, thinking, toolUse,toolName, toolInput, toolCalls, isThinking) => set((state) => {
         const messages = [...state.messages]
         const lastMessage = messages[messages.length - 1]
         if (lastMessage && lastMessage.role === 'assistant') {
@@ -110,7 +111,8 @@ Please use the maximum computational power and token limit available in a single
             ...(toolUse !== undefined && { toolUse }),
             ...(toolName !== undefined && { toolName }),
             ...(toolInput !== undefined && { toolInput }),
-            ...(toolCalls !== undefined && { toolCalls })
+            ...(toolCalls !== undefined && { toolCalls }),
+            ...(isThinking !== undefined && { isThinking })
           }
         }
         return { messages }

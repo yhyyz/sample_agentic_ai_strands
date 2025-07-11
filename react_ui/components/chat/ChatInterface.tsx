@@ -9,7 +9,9 @@ import { fetchMcpServers } from '@/lib/api/chat';
 
 export default function ChatInterface() {
   const [isLoadingMcpServers, setIsLoadingMcpServers] = useState(true);
+  const [isChatLoading, setIsChatLoading] = useState(false);
   const loadedRef = useRef<boolean>(false);
+  
   const { userId, setUserId, mcpServers, setMcpServers } = useStore();
   
   // Initialize userId if not set
@@ -77,14 +79,24 @@ export default function ChatInterface() {
   
   return (
     <div className="flex flex-col h-full">
-      {/* Main chat area - full width */}
-      <div className="flex flex-1 overflow-hidden">
-        <div className="flex flex-col w-full min-w-0">
+      {/* Main chat area - centered with max width */}
+      <div className="flex flex-1 overflow-hidden justify-center">
+        <div className="flex flex-col w-full max-w-4xl min-w-0 bg-gray-50/80 dark:bg-gray-800/80 shadow-md">
           {/* Message list */}
-          <MessageList isLoading={isLoadingMcpServers} />
-          
-          {/* Chat input */}
-          <ChatInput disabled={isLoadingMcpServers} />
+          <MessageList isLoading={isLoadingMcpServers} isRunning={isChatLoading}/>
+        </div>
+      </div>
+      
+      {/* Full width separator line */}
+      <div className="border-t border-border"></div>
+      
+      {/* Chat input - centered with same max width */}
+      <div className="flex justify-center">
+        <div className="w-full max-w-4xl">
+          <ChatInput
+            disabled={isLoadingMcpServers}
+            onLoadingChange={setIsChatLoading}
+          />
         </div>
       </div>
     </div>

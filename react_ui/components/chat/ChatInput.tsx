@@ -12,9 +12,10 @@ import AudioRecorder from './AudioRecorder';
 
 interface ChatInputProps {
   disabled?: boolean;
+  onLoadingChange?: (isLoading: boolean) => void;
 }
 
-export function ChatInput({ disabled = false }: ChatInputProps) {
+export function ChatInput({ disabled = false, onLoadingChange }: ChatInputProps) {
   const [prompt, setPrompt] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [isStreaming, setIsStreaming] = useState(false);
@@ -22,6 +23,7 @@ export function ChatInput({ disabled = false }: ChatInputProps) {
   const [files, setFiles] = useState<FileItem[]>([]);
   const [showFileUpload, setShowFileUpload] = useState(false);
   const [isVoiceMode, setIsVoiceMode] = useState(false);
+  const [isThinking, setIsThinking] = useState(false);
   const abortControllerRef = useRef<{ abort: () => void } | null>(null);
   
   const {
@@ -85,6 +87,7 @@ export function ChatInput({ disabled = false }: ChatInputProps) {
     } finally {
       setIsStreaming(false);
       setCurrentStreamId(null);
+      onLoadingChange?.(false);
     }
   };
 
@@ -163,6 +166,7 @@ export function ChatInput({ disabled = false }: ChatInputProps) {
     setFiles([]);
     setShowFileUpload(false);
     setIsLoading(true);
+    onLoadingChange?.(true);
     
     try {
       // We already have the modelId from our store
@@ -208,10 +212,13 @@ export function ChatInput({ disabled = false }: ChatInputProps) {
           let fullThinking = '';
           let toolUseData: any[] = [];
           let fullToolInput:any[] = [];
+          let fullInputContent = '';
           
           // Set streaming state and save stream ID
           setIsStreaming(true);
           setCurrentStreamId(streamId);
+          // Keep loading state true during streaming
+          onLoadingChange?.(true);
           
           // Add initial empty assistant message that will be updated with streaming content
           addMessage({ role: 'assistant', content: '' });
@@ -222,27 +229,20 @@ export function ChatInput({ disabled = false }: ChatInputProps) {
             response,
             // Content handler
             (content) => {
-              fullResponse += content;
-              // Extract thinking and tool use from content
-              const { thinking, cleanContent: contentAfterThinking } = extractThinking(fullResponse);
-              fullResponse = contentAfterThinking;
-              fullThinking += thinking??"";
-              
-              // Extract tool_input from content
-              const { toolInput, cleanContent } = extractToolInput(fullResponse);
-              fullResponse = cleanContent;
-              if (toolInput) {
-                fullToolInput = [...fullToolInput,toolInput]
+              // Stop thinking when we start receiving content
+              if (isThinking) {
+                setIsThinking(false);
               }
-              console.log(`fullToolInput:${fullToolInput}`)
               
-              // Update message with content, thinking, and tool_input if available
+              fullResponse += content;
               updateLastMessage(
-                cleanContent || '',
-                fullThinking.trim() ? fullThinking : undefined,
+                fullResponse || '',
                 undefined,
                 undefined,
-                fullToolInput.length ? fullToolInput:undefined );
+                undefined,
+                undefined,
+                undefined,
+                false );
             },
             // Tool use handler
             (toolUse) => {
@@ -260,13 +260,14 @@ export function ChatInput({ disabled = false }: ChatInputProps) {
                 const lastMessageIndex = messages.length - 1;
                 if (lastMessageIndex >= 0 && messages[lastMessageIndex].role === 'assistant') {
                   const currentContent = messages[lastMessageIndex].content;
-                  // const currentThinking = messages[lastMessageIndex].thinking;
-                  // const currentToolInput = messages[lastMessageIndex].toolInput;
                   updateLastMessage(
                     currentContent || '',
                     undefined,
                     [ ...messages[lastMessageIndex].toolUse || [], toolUseData],
-                    undefined);
+                    undefined,
+                    undefined,
+                    undefined,
+                    false);
                 }
                   // console.log("messages:", messages);
 
@@ -277,13 +278,18 @@ export function ChatInput({ disabled = false }: ChatInputProps) {
               // Thinking handler - directly sent from server, not extracted from content
               (thinking) => {
                 if (thinking && thinking.trim()) {
+                  // Set thinking state to true when we start receiving thinking content
+                  if (!isThinking) {
+                    setIsThinking(true);
+                  }
+                  
+                  // Accumulate thinking content
+                  fullThinking += thinking;
                   const { messages } = useStore.getState();
                   const lastMessageIndex = messages.length - 1;
                   if (lastMessageIndex >= 0 && messages[lastMessageIndex].role === 'assistant') {
                     const currentContent = messages[lastMessageIndex].content;
-                    const currentToolUse = messages[lastMessageIndex].toolUse;
-                    const currentToolInput = messages[lastMessageIndex].toolInput;
-                    updateLastMessage(currentContent, thinking, undefined, undefined);
+                    updateLastMessage(currentContent, fullThinking, undefined, undefined,undefined,undefined, true);
                   }
                 }
               },
@@ -296,21 +302,51 @@ export function ChatInput({ disabled = false }: ChatInputProps) {
               });
               setIsStreaming(false);
               setCurrentStreamId(null);
+              onLoadingChange?.(false);
               abortControllerRef.current = null;
             },
             // Done handler
             () => {
               setIsStreaming(false);
               setCurrentStreamId(null);
+              setIsThinking(false);
+              onLoadingChange?.(false);
               abortControllerRef.current = null;
             },
             // Tool input handler - directly sent from server
             (toolInput) => {
-              console.log(`ontoolInput:${toolInput}`)
+              // console.log(`ontoolInput:${toolInput}`)
+              if (toolInput !== '<END>'){
+                  fullInputContent += toolInput;
+              }else{
+                  fullToolInput = [...fullToolInput,fullInputContent]
+                  fullInputContent = ''
+              }
+              const { messages } = useStore.getState();
+              const lastMessageIndex = messages.length - 1;
+              if (lastMessageIndex >= 0 && messages[lastMessageIndex].role === 'assistant') {
+                const currentContent = messages[lastMessageIndex].content;
+                const currentToolInput = messages[lastMessageIndex].toolInput;
+                updateLastMessage(
+                  currentContent || '',
+                  undefined,
+                  undefined,
+                  undefined,
+                  fullToolInput.length ? fullToolInput:undefined ,
+                  undefined,
+                  false
+                );
+              }
+
             },
             (toolName) => {
+              // Stop thinking when we start receiving tool names
+              if (isThinking) {
+                setIsThinking(false);
+              }
+              
               console.log(`ontoolName:${toolName}`);
-               const { messages } = useStore.getState();
+                const { messages } = useStore.getState();
                 const lastMessageIndex = messages.length - 1;
                 if (lastMessageIndex >= 0 && messages[lastMessageIndex].role === 'assistant') {
                   const currentContent = messages[lastMessageIndex].content;
@@ -321,7 +357,8 @@ export function ChatInput({ disabled = false }: ChatInputProps) {
                     undefined,
                     [ ...currentToolName || [], toolName],
                     undefined,
-                    undefined
+                    undefined,
+                    false
                   );
                 }
 
@@ -389,12 +426,14 @@ export function ChatInput({ disabled = false }: ChatInputProps) {
       });
     } finally {
       setIsLoading(false);
-      // Only reset streaming state for non-streaming requests or errors
+      // Only reset loading state for non-streaming requests
       if (!enableStream) {
+        onLoadingChange?.(false);
         setIsStreaming(false);
         setCurrentStreamId(null);
         abortControllerRef.current = null;
       }
+      // For streaming requests, loading state will be reset in the done/error handlers
     }
   };
   
@@ -413,159 +452,16 @@ export function ChatInput({ disabled = false }: ChatInputProps) {
       content: text
     });
   };
-  
-  // Convert toolName, toolInput and toolUse data to ToolCall format
-  // 数据流：toolNameArray -> toolInputArray -> toolUseArray
-  // const convertToToolCalls = (toolNameArray?: any[], toolInputArray?: any[], toolUseArray?: any[]): ToolCall[] => {
-  //   const toolCalls: ToolCall[] = [];
-    
-  //   // 解析各个数据源
-  //   const toolNames = toolNameArray || [];
-  //   const toolInputs = toolInputArray || [];
-    
-  //   // 解析toolUse数据（工具结果）
-  //   let toolResults: any[] = [];
-  //   if (toolUseArray && toolUseArray.length > 0) {
-  //     try {
-  //       toolResults = toolUseArray.map(item =>
-  //         typeof item === 'string' ? JSON.parse(item) : item
-  //       );
-  //     } catch (e) {
-  //       console.warn('Failed to parse toolUseArray:', toolUseArray);
-  //     }
-  //   }
-
-  //   // 确定最大工具数量
-  //   const maxToolCount = Math.max(toolNames.length, toolInputs.length, toolResults.length);
-    
-  //   // 为每个工具创建ToolCall对象
-  //   for (let index = 0; index < maxToolCount; index++) {
-  //     const toolName = toolNames[index];
-  //     const toolInput = toolInputs[index];
-  //     const toolResult = toolResults[index];
-      
-  //     // 确定工具状态和内容
-  //     let status: 'pending' | 'running' | 'completed' | 'error' = 'pending';
-  //     let name = 'unknown_tool';
-  //     let toolArguments = {};
-  //     let result: any = undefined;
-  //     let endTime: number | undefined = undefined;
-      
-  //     // 根据当前接收到的数据确定状态
-  //     // 阶段1：只有toolName - 工具开始执行
-  //     if (toolName && !toolInput && !toolResult) {
-  //       status = 'running';
-  //       name = toolName;
-  //       toolArguments = {};
-  //     }
-  //     // 阶段2：有toolName和toolInput - 工具正在执行，显示参数
-  //     else if (toolName && toolInput && !toolResult) {
-  //       status = 'running';
-  //       name = toolName;
-  //       toolArguments = toolInput;
-  //     }
-  //     // 阶段3：有toolResult - 工具执行完成
-  //     else if (toolResult) {
-  //       status = toolResult.tool_result?.status === 'success' ? 'completed' : 'error';
-  //       name = toolResult.tool_name || toolName || 'unknown_tool';
-  //       toolArguments = toolInput || toolResult.input || {};
-  //       result = toolResult.tool_result?.content?.[0]?.text || 'No result content';
-  //       endTime = Date.now() - (index * 500);
-  //     }
-  //     // 其他情况的fallback处理
-  //     else if (toolInput) {
-  //       status = 'running';
-  //       name = toolName || 'unknown_tool';
-  //       toolArguments = toolInput;
-  //     }
-  //     else if (toolName) {
-  //       status = 'running';
-  //       name = toolName;
-  //       toolArguments = {};
-  //     }
-      
-  //     // 创建ToolCall对象
-  //     const toolCall: ToolCall = {
-  //       id: toolResult?.toolUseId || `tool-${index}`,
-  //       name,
-  //       arguments: toolArguments,
-  //       status,
-  //       startTime: Date.now() - (index * 1000),
-  //       ...(endTime && { endTime }),
-  //       ...(result && { result })
-  //     };
-      
-  //     toolCalls.push(toolCall);
-  //   }
-    
-  //   return toolCalls;
-  // };
 
   // Handle tool use data from WebSocket
   const handleToolUse = (toolUseData: any) => {
     console.log('Tool use data received:', toolUseData);
     return
-    // const { messages } = useStore.getState();
-    // // Create a new assistant message if one doesn't exist
-    // const lastMessage = messages[messages.length - 1];
-    // // console.log('lastMessage:',lastMessage)
-    // if (!lastMessage || lastMessage.role !== 'assistant') {
-    //   const toolCalls = convertToToolCalls(undefined, undefined, [toolUseData]);
-    //   addMessage({
-    //     role: 'assistant',
-    //     content: '[using tool]',
-    //     toolInput: toolUseData,
-    //     toolUse: [toolUseData],
-    //     toolCalls: toolCalls
-    //   });
-    // } else {
-    //   // Update the last assistant message with the tool use data
-    //   const currentToolUse = lastMessage.toolUse || [];
-    //   const updatedToolUse = [...currentToolUse, toolUseData];
-    //   const toolCalls = convertToToolCalls(undefined, undefined, updatedToolUse);
-      
-    //   updateLastMessage(
-    //     lastMessage.content || '[using tool]',
-    //     lastMessage.thinking,
-    //     updatedToolUse,
-    //     [lastMessage.toolInput],
-    //     toolCalls
-    //   );
-    // }
   };
   
   // Handle tool result data from WebSocket
   const handleToolResult = (toolResultData: any) => {
     console.log('Tool result data received:', toolResultData);
-    // return
-    // const { messages } = useStore.getState();
-    // // Find the corresponding tool use by ID
-    // const lastMessage = messages[messages.length - 1];
-    // // console.log('lastMessage:',lastMessage)
-    // if (lastMessage && lastMessage.role === 'assistant' && lastMessage.toolUse) {
-    //   const toolUse = lastMessage.toolUse;
-      
-    //   // Create a formatted tool result object
-    //   const toolResult = {
-    //     toolUseId: toolResultData.toolUseId,
-    //     content: toolResultData.content || []
-    //   };
-      
-    //   // Update toolUse array
-    //   const updatedToolUse = [...toolUse, toolResult];
-      
-    //   // Convert to toolCalls format
-    //   const toolCalls = convertToToolCalls(undefined, undefined, updatedToolUse);
-      
-    //   // Add the tool result to the message
-    //   updateLastMessage(
-    //     lastMessage.content || '',
-    //     lastMessage.thinking,
-    //     updatedToolUse,
-    //     [lastMessage.toolInput],
-    //     toolCalls
-    //   );
-    // }
   };
   
   const toggleVoiceMode = () => {
@@ -573,7 +469,7 @@ export function ChatInput({ disabled = false }: ChatInputProps) {
   };
   
   return (
-    <div className="p-4 border-t">
+    <div className="p-4">
       {showFileUpload && (
         <FileUpload
           files={files}

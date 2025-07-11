@@ -253,6 +253,14 @@ export function processStreamResponse(
       if ('content' in delta) {
         onContent(delta.content);
       }
+
+      if ('reasoning_content' in delta){
+        onThinking(delta.reasoning_content);
+      }
+
+      if ('toolinput_content' in delta && onToolInput){
+        onToolInput(delta.toolinput_content);
+      }
       
       const messageExtras = jsonData.choices?.[0]?.message_extras || {};
       if ('tool_use' in messageExtras) {
@@ -264,27 +272,27 @@ export function processStreamResponse(
       }
       
       // Extract thinking content if present
-      const content = delta.content || '';
-      const thinkingMatch = content.match(/<thinking>(.*?)<\/thinking>/s);
-      if (thinkingMatch) {
-        onThinking(thinkingMatch[1]);
-      }
+      // const content = delta.content || '';
+      // const thinkingMatch = content.match(/<thinking>(.*?)<\/thinking>/s);
+      // if (thinkingMatch) {
+      //   onThinking(thinkingMatch[1]);
+      // }
       
       // Extract tool_input content if present
-      const toolInputMatch = content.match(/<tool_input>(.*?)<\/tool_input>/s);
-      if (toolInputMatch && onToolInput) {
-        onToolInput(toolInputMatch[1]);
-      }
+      // const toolInputMatch = content.match(/<tool_input>(.*?)<\/tool_input>/s);
+      // if (toolInputMatch && onToolInput) {
+      //   onToolInput(toolInputMatch[1]);
+      // }
       
       // Check if message_extras contains thinking
-      if (messageExtras && messageExtras.thinking) {
-        onThinking(messageExtras.thinking);
-      }
+      // if (messageExtras && messageExtras.thinking) {
+      //   onThinking(messageExtras.thinking);
+      // }
       
       // Check if message_extras contains tool_input
-      if (messageExtras && messageExtras.tool_input && onToolInput) {
-        onToolInput(messageExtras.tool_input);
-      }
+      // if (messageExtras && messageExtras.tool_input && onToolInput) {
+      //   onToolInput(messageExtras.tool_input);
+      // }
       
     } catch (e) {
       // JSON parsing failed
