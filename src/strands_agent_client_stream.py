@@ -18,6 +18,8 @@ from strands_agent_client import StrandsAgentClient
 from mcp_client_strands import StrandsMCPClient
 from utils import maybe_filter_to_n_most_recent_images, remove_cache_checkpoint,get_stream_id
 from constant import *
+import queue
+
 load_dotenv()  # load environment variables from .env
 
 logging.basicConfig(
@@ -144,12 +146,7 @@ class StrandsAgentClientStream(StrandsAgentClient):
                 thread_id = agent_thread.ident
                 if thread_id:
                     logger.info(f"Agent thread {thread_id} for stream {stream_id} is still running")
-                
-                # Note: In Python, we cannot forcefully kill threads, but we can:
-                # 1. Set stop events (already done)
-                # 2. Clear references to allow garbage collection
-                # 3. Log the situation for monitoring
-                
+
                 # The daemon threads will be terminated when the main process exits
                 # But we should clean up our references
                 logger.warning(f"Agent thread for stream {stream_id} may have daemon threads still running")
@@ -198,7 +195,7 @@ class StrandsAgentClientStream(StrandsAgentClient):
                 if stop_event.is_set():
                     logger.info(f"Agent stream worker for {stream_id} stopped by event")
                     break
-                    
+                # logger.info(event)
                 # Put event in queue for main thread to consume
                 stream_queue.put(event)
                 
@@ -248,7 +245,7 @@ class StrandsAgentClientStream(StrandsAgentClient):
             loop.close()
             logger.info(f"Monitor thread for stream {stream_id} terminated")
     
-    async def _process_stream_response(self, stream_id: Optional[str], response) -> AsyncIterator[Dict]:
+    async def   _process_stream_response(self, stream_id: Optional[str], response) -> AsyncIterator[Dict]:
         """Process the raw response from converse_stream"""
         last_yield_time = time.time()
         async for chunk in response:
@@ -308,10 +305,11 @@ class StrandsAgentClientStream(StrandsAgentClient):
     async def process_query_stream(self,
             model_id="", max_tokens=1024, max_turns=30, temperature=0.1,
             messages=[], system=[], mcp_clients=None, mcp_server_ids=[], extra_params={}, keep_session=None,
-            stream_id: Optional[str] = None) -> AsyncGenerator[Dict, None]:
+            stream_id: Optional[str] = None, use_mem: bool = False) -> AsyncGenerator[Dict, None]:
         """Submit user query or history messages, and get streaming response using Strands Agents SDK."""
         
         logger.info(f'client input message list length:{len(messages)}')
+        logger.info(f'use mem:{use_mem}')
         if not messages:
             raise ValueError('empty message')
         # must be kept with Strands
@@ -343,9 +341,19 @@ class StrandsAgentClientStream(StrandsAgentClient):
         user_identity = f"\nHere is the request from User with user id:{self.user_id}\n"
         system_prompt += user_identity
         # Convert messages to Strands format
-        # strands_messages = self._convert_messages_to_strands_format(messages)
-        history_messages = messages[:-1]
-        prompt = messages[-1]['content'][0]['text']
+        
+        
+        # 把多模态数据保留到history中
+        prompt = ""
+        new_content_block = []
+        for content_block in messages[-1]['content']:
+            if 'text' in content_block:
+                prompt = content_block['text']
+            else:
+                new_content_block.append(content_block)
+        # messages[-1]['content'] = new_content_block
+        history_messages = messages if new_content_block else messages[:-1]
+        
         thinking = extra_params.get('enable_thinking', False) and model_id in [CLAUDE_37_SONNET_MODEL_ID,CLAUDE_4_SONNET_MODEL_ID,CLAUDE_4_OPUS_MODEL_ID]
         thinking_budget = extra_params.get("budget_tokens",4096)
         max_tokens = max(thinking_budget + 1, max_tokens) if thinking else max_tokens
@@ -359,7 +367,8 @@ class StrandsAgentClientStream(StrandsAgentClient):
             thinking=thinking,
             thinking_budget=thinking_budget,
             max_tokens=max_tokens,
-            temperature=temperature
+            temperature=temperature,
+            use_mem=use_mem,
         )
         
         current_content = ""
@@ -386,14 +395,11 @@ class StrandsAgentClientStream(StrandsAgentClient):
         self._start_agent_thread(stream_id, prompt)
         
         # Get events from agent thread via queue
-        import queue
         stream_queue = self.stream_queues[stream_id]
         
         while True:
             try:
-                # Use shorter timeout and yield control more frequently
-                event = stream_queue.get(timeout=0.1)
-                
+                event = stream_queue.get(timeout=1)
                 # Check if stream should stop
                 if stream_id in self.stop_flags and self.stop_flags[stream_id]:
                     logger.info(f"Stream {stream_id} was requested to stop")

@@ -7,6 +7,7 @@ import ModelSelector from './model-selector'
 import ServerList from './server-list'
 import AddServerDialog from './add-server-dialog'
 import { Switch } from '@/components/ui/switch'
+import { ChevronLeft, ChevronRight } from 'lucide-react'
 
 interface SidebarProps {
   onClose: () => void
@@ -28,8 +29,8 @@ export default function Sidebar({ onClose }: SidebarProps) {
     setEnableThinking,
     enableStream,
     setEnableStream,
-    keepSession,
-    setKeepSession,
+    useMemory,
+    setUseMemory,
     clearMessages,
     userId,
     setUserId,
@@ -65,15 +66,13 @@ export default function Sidebar({ onClose }: SidebarProps) {
       {/* Header */}
       <div className="h-14 border-b border-border flex items-center justify-between px-4">
         <h2 className="font-semibold">Settings</h2>
-        <button 
+        <button
           onClick={onClose}
           className="p-2 rounded-md hover:bg-secondary transition-colors"
-          aria-label="Close sidebar"
+          aria-label="Collapse sidebar"
+          title="Collapse sidebar"
         >
-          <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-            <line x1="18" y1="6" x2="6" y2="18"></line>
-            <line x1="6" y1="6" x2="18" y2="18"></line>
-          </svg>
+          <ChevronLeft className="h-4 w-4" />
         </button>
       </div>
 
@@ -242,13 +241,13 @@ export default function Sidebar({ onClose }: SidebarProps) {
             </div>
 
             <div className="flex items-center justify-between">
-              <label htmlFor="keep-session" className="text-sm font-medium">
-                Keep Session on Server
+              <label htmlFor="use-memory" className="text-sm font-medium">
+                Use Memory
               </label>
               <Switch
-                id="keep-session"
-                checked={keepSession}
-                onCheckedChange={setKeepSession}
+                id="use-memory"
+                checked={useMemory}
+                onCheckedChange={setUseMemory}
               />
             </div>
 

@@ -31,7 +31,7 @@ echo "MCP_BASE_URL: ${MCP_BASE_URL}"
 echo "React UI environment updated with backend URL: ${PROTOCOL}://${MCP_SERVICE_HOST}:${MCP_SERVICE_PORT}"
 # Start MCP service
 echo "Starting MCP service with ${PROTOCOL}..."
-nohup python src/main.py --mcp-conf conf/config.json --user-conf conf/user_mcp_config.json \
+nohup uv run src/main.py --mcp-conf conf/config.json --user-conf conf/user_mcp_config.json \
     --host ${MCP_SERVICE_HOST} --port ${MCP_SERVICE_PORT} ${HTTPS_ARGS} > ${LOG_FILE1} 2>&1 &
 
 # Start Chatbot service 

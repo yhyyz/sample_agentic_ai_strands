@@ -47,6 +47,7 @@ class ChatCompletionRequest(BaseModel):
     options: Optional[dict] = {}
     keep_session: Optional[bool] = False
     mcp_server_ids: Optional[List[str]] = []
+    use_mem: Optional[bool] = False
 
 class ChatResponse(BaseModel):
     id: str

@@ -19,7 +19,7 @@ from mcp_client_strands import StrandsMCPClient
 from strands.agent.conversation_manager import SlidingWindowConversationManager
 from botocore.config import Config
 from custom_tools import mem0_memory
-
+from strands.telemetry import StrandsTelemetry
 from constant import *
 load_dotenv()  # load environment variables from .env
 
@@ -30,11 +30,12 @@ secret_key = os.environ.get("LANGFUSE_SECRET_KEY")
 langfuse_endpoint =  os.environ.get("LANGFUSE_HOST")
 # Set up endpoint
 if public_key and secret_key and langfuse_endpoint:
-    otel_endpoint = langfuse_endpoint + "/api/public/otel/v1/traces"
+    otel_endpoint = langfuse_endpoint + "/api/public/otel"
     auth_token = base64.b64encode(f"{public_key}:{secret_key}".encode()).decode()
     os.environ["OTEL_EXPORTER_OTLP_ENDPOINT"] = otel_endpoint
     os.environ["OTEL_EXPORTER_OTLP_HEADERS"] = f"Authorization=Basic {auth_token}"
-
+    strands_telemetry = StrandsTelemetry()
+    strands_telemetry.setup_otlp_exporter()      # Send traces to OTLP endpoint
 
 window_size = 100
 logging.basicConfig(
@@ -225,7 +226,11 @@ class StrandsAgentClient(ChatClient):
         
         return tools
     
-    async def _create_agent_with_tools(self, model_id, messages,mcp_clients=None, mcp_server_ids=None, system_prompt=None,thinking=True, thinking_budget=4096, max_tokens=1024, temperature=0.7):
+    async def _create_agent_with_tools(self, model_id, messages,mcp_clients=None, mcp_server_ids=None, system_prompt=None,thinking=True, 
+                                       thinking_budget=4096,
+                                       max_tokens=1024,
+                                       temperature=0.7,
+                                       use_mem=False):
         """Create a Strands agent with MCP tools"""
         
         # Create MCP tools
@@ -235,7 +240,7 @@ class StrandsAgentClient(ChatClient):
         model = self._get_model(model_id,thinking=thinking, thinking_budget=thinking_budget,max_tokens=max_tokens, temperature=temperature)
         
         # 如果配置了PG Database,添加memory tool
-        if os.environ.get("POSTGRESQL_HOST"):
+        if os.environ.get("POSTGRESQL_HOST") and use_mem:
             tools = tools + [mem0_memory]
             
         # Create agent
@@ -245,8 +250,10 @@ class StrandsAgentClient(ChatClient):
             conversation_manager = SlidingWindowConversationManager(
                 window_size=window_size,  # Maximum number of message pairs to keep
             ),
+            callback_handler=None,
             system_prompt=system_prompt or "You are a helpful assistant.",
-            tools=tools
+            tools=tools,
+            load_tools_from_directory=False
         )
         
         return agent
