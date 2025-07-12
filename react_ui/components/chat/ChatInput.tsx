@@ -2,7 +2,7 @@
 
 import { useState, FormEvent, useRef, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
-import { useStore, Message } from '@/lib/store';
+import { useStore, Message, ToolCall } from '@/lib/store';
 import { v4 as uuidv4 } from 'uuid';
 import { sendChatRequest, processStreamResponse, stopStream } from '@/lib/api/chat';
 import { extractThinking, extractToolUse, extractToolInput} from '@/lib/utils';
@@ -12,9 +12,10 @@ import AudioRecorder from './AudioRecorder';
 
 interface ChatInputProps {
   disabled?: boolean;
+  onLoadingChange?: (isLoading: boolean) => void;
 }
 
-export function ChatInput({ disabled = false }: ChatInputProps) {
+export function ChatInput({ disabled = false, onLoadingChange }: ChatInputProps) {
   const [prompt, setPrompt] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [isStreaming, setIsStreaming] = useState(false);
@@ -22,6 +23,7 @@ export function ChatInput({ disabled = false }: ChatInputProps) {
   const [files, setFiles] = useState<FileItem[]>([]);
   const [showFileUpload, setShowFileUpload] = useState(false);
   const [isVoiceMode, setIsVoiceMode] = useState(false);
+  const [isThinking, setIsThinking] = useState(false);
   const abortControllerRef = useRef<{ abort: () => void } | null>(null);
   
   const {
@@ -85,6 +87,7 @@ export function ChatInput({ disabled = false }: ChatInputProps) {
     } finally {
       setIsStreaming(false);
       setCurrentStreamId(null);
+      onLoadingChange?.(false);
     }
   };
 
@@ -163,6 +166,7 @@ export function ChatInput({ disabled = false }: ChatInputProps) {
     setFiles([]);
     setShowFileUpload(false);
     setIsLoading(true);
+    onLoadingChange?.(true);
     
     try {
       // We already have the modelId from our store
@@ -207,11 +211,14 @@ export function ChatInput({ disabled = false }: ChatInputProps) {
           let fullResponse = '';
           let fullThinking = '';
           let toolUseData: any[] = [];
-          let fullToolInput = '';
+          let fullToolInput:any[] = [];
+          let fullInputContent = '';
           
           // Set streaming state and save stream ID
           setIsStreaming(true);
           setCurrentStreamId(streamId);
+          // Keep loading state true during streaming
+          onLoadingChange?.(true);
           
           // Add initial empty assistant message that will be updated with streaming content
           addMessage({ role: 'assistant', content: '' });
@@ -222,34 +229,29 @@ export function ChatInput({ disabled = false }: ChatInputProps) {
             response,
             // Content handler
             (content) => {
-              fullResponse += content;
-              // Extract thinking and tool use from content
-              const { thinking, cleanContent: contentAfterThinking } = extractThinking(fullResponse);
-              fullResponse = contentAfterThinking;
-              fullThinking += thinking??"";
-              
-              // Extract tool_input from content
-              const { toolInput, cleanContent } = extractToolInput(fullResponse);
-              fullResponse = cleanContent;
-              if (toolInput) {
-                fullToolInput += toolInput + "\n";
+              // Stop thinking when we start receiving content
+              if (isThinking) {
+                setIsThinking(false);
               }
               
-              // Update message with content, thinking, and tool_input if available
+              fullResponse += content;
               updateLastMessage(
-                cleanContent || '',
-                fullThinking.trim() ? fullThinking : undefined,
+                fullResponse || '',
                 undefined,
-                fullToolInput.trim() ? fullToolInput : undefined
-              );
+                undefined,
+                undefined,
+                undefined,
+                undefined,
+                false );
             },
             // Tool use handler
             (toolUse) => {
               try {
                 const toolUseJson = JSON.parse(JSON.parse(toolUse));
-                if (Array.isArray(toolUseJson)) {
-                  toolUseData = toolUseJson;
-                  // console.log("toolUseData:", toolUseJson);
+                console.log(`ontoolUseData:${toolUseJson}`);
+ 
+                toolUseData = toolUseJson[1];
+
 
                   // Update last assistant message with tool use data
                 // Update last message with tool use data
@@ -258,16 +260,17 @@ export function ChatInput({ disabled = false }: ChatInputProps) {
                 const lastMessageIndex = messages.length - 1;
                 if (lastMessageIndex >= 0 && messages[lastMessageIndex].role === 'assistant') {
                   const currentContent = messages[lastMessageIndex].content;
-                  const currentThinking = messages[lastMessageIndex].thinking;
-                  const currentToolInput = messages[lastMessageIndex].toolInput;
                   updateLastMessage(
                     currentContent || '',
-                    currentThinking,
-                    [ ...messages[lastMessageIndex].toolUse || [], ...toolUseData],
-                    currentToolInput);
+                    undefined,
+                    [ ...messages[lastMessageIndex].toolUse || [], toolUseData],
+                    undefined,
+                    undefined,
+                    undefined,
+                    false);
                 }
                   // console.log("messages:", messages);
-                }
+
               } catch (error) {
                 console.error('Failed to parse tool use data:', error);
               }
@@ -275,13 +278,18 @@ export function ChatInput({ disabled = false }: ChatInputProps) {
               // Thinking handler - directly sent from server, not extracted from content
               (thinking) => {
                 if (thinking && thinking.trim()) {
+                  // Set thinking state to true when we start receiving thinking content
+                  if (!isThinking) {
+                    setIsThinking(true);
+                  }
+                  
+                  // Accumulate thinking content
+                  fullThinking += thinking;
                   const { messages } = useStore.getState();
                   const lastMessageIndex = messages.length - 1;
                   if (lastMessageIndex >= 0 && messages[lastMessageIndex].role === 'assistant') {
                     const currentContent = messages[lastMessageIndex].content;
-                    const currentToolUse = messages[lastMessageIndex].toolUse;
-                    const currentToolInput = messages[lastMessageIndex].toolInput;
-                    updateLastMessage(currentContent, thinking, currentToolUse, currentToolInput);
+                    updateLastMessage(currentContent, fullThinking, undefined, undefined,undefined,undefined, true);
                   }
                 }
               },
@@ -294,32 +302,66 @@ export function ChatInput({ disabled = false }: ChatInputProps) {
               });
               setIsStreaming(false);
               setCurrentStreamId(null);
+              onLoadingChange?.(false);
               abortControllerRef.current = null;
             },
             // Done handler
             () => {
               setIsStreaming(false);
               setCurrentStreamId(null);
+              setIsThinking(false);
+              onLoadingChange?.(false);
               abortControllerRef.current = null;
             },
             // Tool input handler - directly sent from server
             (toolInput) => {
-              if (toolInput && toolInput.trim()) {
-                fullToolInput += toolInput;
+              // console.log(`ontoolInput:${toolInput}`)
+              if (toolInput !== '<END>'){
+                  fullInputContent += toolInput;
+              }else{
+                  fullToolInput = [...fullToolInput,fullInputContent]
+                  fullInputContent = ''
+              }
+              const { messages } = useStore.getState();
+              const lastMessageIndex = messages.length - 1;
+              if (lastMessageIndex >= 0 && messages[lastMessageIndex].role === 'assistant') {
+                const currentContent = messages[lastMessageIndex].content;
+                const currentToolInput = messages[lastMessageIndex].toolInput;
+                updateLastMessage(
+                  currentContent || '',
+                  undefined,
+                  undefined,
+                  undefined,
+                  fullToolInput.length ? fullToolInput:undefined ,
+                  undefined,
+                  false
+                );
+              }
+
+            },
+            (toolName) => {
+              // Stop thinking when we start receiving tool names
+              if (isThinking) {
+                setIsThinking(false);
+              }
+              
+              console.log(`ontoolName:${toolName}`);
                 const { messages } = useStore.getState();
                 const lastMessageIndex = messages.length - 1;
                 if (lastMessageIndex >= 0 && messages[lastMessageIndex].role === 'assistant') {
                   const currentContent = messages[lastMessageIndex].content;
-                  const currentThinking = messages[lastMessageIndex].thinking;
-                  const currentToolUse = messages[lastMessageIndex].toolUse;
+                  const currentToolName = messages[lastMessageIndex].toolName;
                   updateLastMessage(
-                    currentContent,
-                    currentThinking,
-                    currentToolUse,
-                    fullToolInput.trim()
+                    currentContent || '',
+                    undefined,
+                    undefined,
+                    [ ...currentToolName || [], toolName],
+                    undefined,
+                    undefined,
+                    false
                   );
                 }
-              }
+
             }
           );
           
@@ -372,7 +414,8 @@ export function ChatInput({ disabled = false }: ChatInputProps) {
           content: cleanContent,
           thinking: thinking || undefined,
           toolUse: toolUseData,
-          toolInput: toolInput || undefined
+          toolName: toolUseData,
+          toolInput: toolInput ? [toolInput] : undefined
         });
       }
     } catch (error) {
@@ -383,12 +426,14 @@ export function ChatInput({ disabled = false }: ChatInputProps) {
       });
     } finally {
       setIsLoading(false);
-      // Only reset streaming state for non-streaming requests or errors
+      // Only reset loading state for non-streaming requests
       if (!enableStream) {
+        onLoadingChange?.(false);
         setIsStreaming(false);
         setCurrentStreamId(null);
         abortControllerRef.current = null;
       }
+      // For streaming requests, loading state will be reset in the done/error handlers
     }
   };
   
@@ -407,57 +452,16 @@ export function ChatInput({ disabled = false }: ChatInputProps) {
       content: text
     });
   };
-  
+
   // Handle tool use data from WebSocket
   const handleToolUse = (toolUseData: any) => {
     console.log('Tool use data received:', toolUseData);
-    const { messages } = useStore.getState();
-    // Create a new assistant message if one doesn't exist
-    const lastMessage = messages[messages.length - 1];
-    // console.log('lastMessage:',lastMessage)
-    if (!lastMessage || lastMessage.role !== 'assistant') {
-      addMessage({
-        role: 'assistant',
-        content: '[using tool]',
-        toolInput:toolUseData,
-        toolUse: [toolUseData]
-      });
-    } else {
-      // Update the last assistant message with the tool use data
-      const currentToolUse = lastMessage.toolUse || [];
-      updateLastMessage(
-        lastMessage.content || '[using tool]',
-        lastMessage.thinking,
-        [...currentToolUse, toolUseData],
-        lastMessage.toolInput
-      );
-    }
+    return
   };
   
   // Handle tool result data from WebSocket
   const handleToolResult = (toolResultData: any) => {
     console.log('Tool result data received:', toolResultData);
-    const { messages } = useStore.getState();
-    // Find the corresponding tool use by ID
-    const lastMessage = messages[messages.length - 1];
-    // console.log('lastMessage:',lastMessage)
-    if (lastMessage && lastMessage.role === 'assistant' && lastMessage.toolUse) {
-      const toolUse = lastMessage.toolUse;
-      
-      // Create a formatted tool result object
-      const toolResult = {
-        toolUseId: toolResultData.toolUseId,
-        content: toolResultData.content || []
-      };
-      
-      // Add the tool result to the message
-      updateLastMessage(
-        lastMessage.content || '',
-        lastMessage.thinking,
-        [...toolUse, toolResult],
-        lastMessage.toolInput
-      );
-    }
   };
   
   const toggleVoiceMode = () => {
@@ -465,7 +469,7 @@ export function ChatInput({ disabled = false }: ChatInputProps) {
   };
   
   return (
-    <div className="p-4 border-t">
+    <div className="p-4">
       {showFileUpload && (
         <FileUpload
           files={files}

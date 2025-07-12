@@ -18,6 +18,8 @@ from strands_agent_client import StrandsAgentClient
 from mcp_client_strands import StrandsMCPClient
 from utils import maybe_filter_to_n_most_recent_images, remove_cache_checkpoint,get_stream_id
 from constant import *
+import queue
+
 load_dotenv()  # load environment variables from .env
 
 logging.basicConfig(
@@ -243,7 +245,7 @@ class StrandsAgentClientStream(StrandsAgentClient):
             loop.close()
             logger.info(f"Monitor thread for stream {stream_id} terminated")
     
-    async def _process_stream_response(self, stream_id: Optional[str], response) -> AsyncIterator[Dict]:
+    async def   _process_stream_response(self, stream_id: Optional[str], response) -> AsyncIterator[Dict]:
         """Process the raw response from converse_stream"""
         last_yield_time = time.time()
         async for chunk in response:
@@ -393,14 +395,11 @@ class StrandsAgentClientStream(StrandsAgentClient):
         self._start_agent_thread(stream_id, prompt)
         
         # Get events from agent thread via queue
-        import queue
         stream_queue = self.stream_queues[stream_id]
         
         while True:
             try:
-                # Use shorter timeout and yield control more frequently
-                event = stream_queue.get(timeout=0.1)
-                # logger.info(event)
+                event = stream_queue.get(timeout=1)
                 # Check if stream should stop
                 if stream_id in self.stop_flags and self.stop_flags[stream_id]:
                     logger.info(f"Stream {stream_id} was requested to stop")

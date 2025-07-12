@@ -16,6 +16,7 @@ dist/
 downloads/
 eggs/
 .eggs/
+.promptx/
 lib64/
 parts/
 sdist/
