@@ -250,8 +250,10 @@ class StrandsAgentClient(ChatClient):
             conversation_manager = SlidingWindowConversationManager(
                 window_size=window_size,  # Maximum number of message pairs to keep
             ),
+            callback_handler=None,
             system_prompt=system_prompt or "You are a helpful assistant.",
-            tools=tools
+            tools=tools,
+            load_tools_from_directory=False
         )
         
         return agent
