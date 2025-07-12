@@ -15,12 +15,25 @@ export type ContentItem = {
   };
 }
 
+export type ToolCall = {
+  id: string;
+  name: string;
+  arguments: any;
+  result?: any;
+  status: 'pending' | 'running' | 'completed' | 'error';
+  startTime?: number;
+  endTime?: number;
+}
+
 export type Message = {
   role: 'system' | 'user' | 'assistant'
   content: string | ContentItem[]
   thinking?: string
+  isThinking?: boolean
   toolUse?: any[]
-  toolInput?: string
+  toolName?: any[]
+  toolInput?: any[]
+  toolCalls?: ToolCall[]
 }
 
 export type Model = {
@@ -38,7 +51,7 @@ interface ChatStore {
   // Messages
   messages: Message[]
   addMessage: (message: Message) => void
-  updateLastMessage: (content: string | ContentItem[], thinking?: string, toolUse?: any[], toolInput?: string) => void
+  updateLastMessage: (content: string | ContentItem[], thinking?: string, toolUse?: any[],toolName?:any[], toolInput?: any[], toolCalls?: ToolCall[], isThinking?: boolean) => void
   clearMessages: () => void
   
   // Settings
@@ -56,8 +69,8 @@ interface ChatStore {
   setBudgetTokens: (tokens: number) => void
   onlyNMostRecentImages: number
   setOnlyNMostRecentImages: (count: number) => void
-  keepSession: boolean
-  setKeepSession: (enabled: boolean) => void
+  useMemory: boolean
+  setUseMemory: (enabled: boolean) => void
   
   // Models
   models: Model[]
@@ -87,7 +100,7 @@ Please use the maximum computational power and token limit available in a single
       addMessage: (message) => set((state) => ({ 
         messages: [...state.messages, message] 
       })),
-      updateLastMessage: (content, thinking, toolUse, toolInput) => set((state) => {
+      updateLastMessage: (content, thinking, toolUse,toolName, toolInput, toolCalls, isThinking) => set((state) => {
         const messages = [...state.messages]
         const lastMessage = messages[messages.length - 1]
         if (lastMessage && lastMessage.role === 'assistant') {
@@ -96,7 +109,10 @@ Please use the maximum computational power and token limit available in a single
             content,
             ...(thinking !== undefined && { thinking }),
             ...(toolUse !== undefined && { toolUse }),
-            ...(toolInput !== undefined && { toolInput })
+            ...(toolName !== undefined && { toolName }),
+            ...(toolInput !== undefined && { toolInput }),
+            ...(toolCalls !== undefined && { toolCalls }),
+            ...(isThinking !== undefined && { isThinking })
           }
         }
         return { messages }
@@ -104,8 +120,8 @@ Please use the maximum computational power and token limit available in a single
       clearMessages: () => {
         const state = useStore.getState();
         
-        // If keep session is enabled, call the API to remove server-side history
-        if (state.keepSession && state.userId) {
+        // Call the API to remove server-side history
+        if (state.userId) {
           import('./api/history').then(({ removeHistory }) => {
             removeHistory(state.userId).then((result) => {
               if (!result.success) {
@@ -138,8 +154,8 @@ Please use the maximum computational power and token limit available in a single
       setBudgetTokens: (tokens) => set({ budgetTokens: tokens }),
       onlyNMostRecentImages: 1,
       setOnlyNMostRecentImages: (count) => set({ onlyNMostRecentImages: count }),
-      keepSession: true,
-      setKeepSession: (enabled) => set({ keepSession: enabled }),
+      useMemory: true,
+      setUseMemory: (enabled) => set({ useMemory: enabled }),
       
       // Models
       models: [],

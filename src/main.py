@@ -188,14 +188,6 @@ async def get_or_create_user_session(
     
     # 从ddb中取出配置，重新初始化，如果已经存在则跳过。
     await initialize_user_servers(session)
-
-    # 如果是新会话，初始化用户的MCP服务器
-    # if not session_obj:
-    #     await initialize_user_servers(session)
-    # elif not is_in_local and session_obj: # 如果已经在全局中，但是不在本地，也需要初始化
-    #     await initialize_user_servers(session)
-    # elif not session.mcp_clients:# 如果用户的MCP服务器已经为空，则重新初始化
-    #     await initialize_user_servers(session)
     return session
 
 async def cleanup_inactive_sessions():
@@ -244,9 +236,6 @@ async def startup_event():
 
 async def shutdown_event():
     """服务器关闭时执行的任务"""
-    # 保存用户MCP配置
-    # await save_user_mcp_configs()
-    
     # 清理所有会话
     cleanup_tasks = []
     with session_lock:
@@ -476,7 +465,6 @@ async def add_mcp_server(
     user_id = session.user_id
     
     # 使用会话锁确保操作是线程安全的
-    # async with session.lock:
     if data.server_id in session.mcp_clients:
         return JSONResponse(content=AddMCPServerResponse(
             errno=-1,
@@ -590,8 +578,6 @@ async def remove_mcp_server(
     session = await get_or_create_user_session(request, auth)
     user_id = session.user_id
     
-    # 使用会话锁确保操作是线程安全的
-    # async with session.lock:
     if server_id not in session.mcp_clients:
         logger.warning(f"User {user_id} tried to remove non-existent server {server_id}")        
         # 从用户配置中删除
@@ -648,9 +634,9 @@ async def stream_chat_response(data: ChatCompletionRequest, session: UserSession
         """独立的心跳发送任务"""
         try:
             while not heartbeat_stop_event.is_set():
-                await asyncio.sleep(30)  # 每30秒发送一次心跳，减少频率
+                await asyncio.sleep(10)  # 每10秒发送一次心跳，减少频率
                 if not heartbeat_stop_event.is_set():
-                    logger.debug("sse heartbeat")  # 改为debug级别，减少日志噪音
+                    logger.info("sse heartbeat")  # 改为debug级别，减少日志噪音
                     yield ": heartbeat\n\n"
         except asyncio.CancelledError:
             pass
@@ -781,6 +767,7 @@ async def stream_chat_response(data: ChatCompletionRequest, session: UserSession
             extra_params=data.extra_params,
             keep_session=data.keep_session,
             stream_id=stream_id,
+            use_mem=data.use_mem,
         )
         
         # 创建心跳生成器
@@ -806,43 +793,55 @@ async def stream_chat_response(data: ChatCompletionRequest, session: UserSession
                 # 处理不同的事件类型
                 if response["type"] == "message_start":
                     event_data["choices"][0]["delta"] = {"role": "assistant"}
-                
+                    
+                elif response["type"] == "block_start":
+                    block_start = response["data"]
+                    if "toolUse" in block_start.get("start", {}):
+                        # text = f"<tool_name>{block_start["start"]["toolUse"]["name"]}</tool_name>"
+                        # event_data["choices"][0]["delta"] = {"content": text }
+                        event_data["choices"][0]["message_extras"] = {
+                            "tool_name": block_start["start"]["toolUse"]["name"]
+                        }
+                    
                 elif response["type"] == "block_delta":
                     if "text" in response["data"]["delta"]:
                         text = ""
-                        if thinking_text_index >= 1 and thinking_start:    
-                            thinking_start = False
-                            text = "</thinking>"
+                        # if thinking_text_index >= 1 and thinking_start:    
+                        #     thinking_start = False
+                        #     text = "</thinking>"
                         text += response["data"]["delta"]["text"]
                         current_content += text
                         event_data["choices"][0]["delta"] = {"content": text}
                         thinking_text_index = 0
                         
                     if "toolUse" in response["data"]["delta"]:
-                        text = ""
+                        # text = ""
                         if not tooluse_start:    
                             tooluse_start = True
-                            text = "<tool_input>"
-                        text += response["data"]["delta"]["toolUse"]['input']
-                        current_content += text
-                        event_data["choices"][0]["delta"] = {"content": text}
+                        #     text = "<tool_input>"
+                        # text += response["data"]["delta"]["toolUse"]['input']
+                        # current_content += text
+                        # event_data["choices"][0]["delta"] = {"content": text}
+                        event_data["choices"][0]["delta"] = {"toolinput_content": response["data"]["delta"]["toolUse"]['input']}
                         
                     if "reasoningContent" in response["data"]["delta"]:
                         if 'text' in response["data"]["delta"]["reasoningContent"]:
-                            if not thinking_start:
-                                text = "<thinking>" + response["data"]["delta"]["reasoningContent"]["text"]
-                                thinking_start = True
-                            else:
-                                text = response["data"]["delta"]["reasoningContent"]["text"]
-                            event_data["choices"][0]["delta"] = {"content": text}
-                            thinking_text_index += 1
+                            # if not thinking_start:
+                            #     text = "<thinking>" + response["data"]["delta"]["reasoningContent"]["text"]
+                            #     thinking_start = True
+                            # else:
+                            #     text = response["data"]["delta"]["reasoningContent"]["text"]
+                            # event_data["choices"][0]["delta"] = {"content": text}
+                            # thinking_text_index += 1
+                            
+                            event_data["choices"][0]["delta"] = {"reasoning_content": response["data"]["delta"]["reasoningContent"]["text"]}
+                            
 
                 elif response["type"] == "block_stop":
                     if tooluse_start:
-                        text =  "</tool_input>"
-                        current_content += text
                         tooluse_start = False
-                        event_data["choices"][0]["delta"] = {"content": text}
+                        event_data["choices"][0]["delta"] = {"toolinput_content": "<END>"}
+                #         event_data["choices"][0]["delta"] = {"content": text}
                         
                 elif response["type"] in [ "message_stop" ,"result_pairs"]:
                     event_data["choices"][0]["finish_reason"] = response["data"]["stopReason"]

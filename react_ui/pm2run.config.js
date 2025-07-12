@@ -6,7 +6,7 @@ module.exports = {
     interpreter: "none",
     // Add environment variables
     env: {
-      NODE_ENV: "production",
+      NODE_ENV: "dev",
       // Keep connections alive longer for streaming responses
       NODE_OPTIONS: "--http-parser=legacy --max-http-header-size=16384"
     },
