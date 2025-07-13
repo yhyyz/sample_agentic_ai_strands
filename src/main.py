@@ -171,14 +171,14 @@ async def get_or_create_user_session(
     is_in_local = True if user_id in user_sessions else False
     
     # 如果全局都没有
-    if not session_obj and create_new:
+    if not session_obj:
         await save_user_session(user_id,dict(user_id=user_id))
         if user_id not in user_sessions:
             user_sessions[user_id] = UserSession(user_id)
             logger.info(f"为用户 {user_id} 创建新会话: {user_sessions[user_id].session_id}")
     
     # 如果已经在全局中，但是不在本地，则在本地new session
-    if not is_in_local and session_obj and create_new: 
+    if not is_in_local and session_obj: 
         user_sessions[user_id] = UserSession(user_id)
         logger.info(f"为用户 {user_id} 创建新会话: {user_sessions[user_id].session_id}")
     
