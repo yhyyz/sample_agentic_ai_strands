@@ -171,14 +171,14 @@ async def get_or_create_user_session(
     is_in_local = True if user_id in user_sessions else False
     
     # 如果全局都没有
-    if not session_obj:
+    if not session_obj and create_new:
         await save_user_session(user_id,dict(user_id=user_id))
         if user_id not in user_sessions:
             user_sessions[user_id] = UserSession(user_id)
             logger.info(f"为用户 {user_id} 创建新会话: {user_sessions[user_id].session_id}")
     
     # 如果已经在全局中，但是不在本地，则在本地new session
-    if not is_in_local and session_obj: 
+    if not is_in_local and session_obj and create_new: 
         user_sessions[user_id] = UserSession(user_id)
         logger.info(f"为用户 {user_id} 创建新会话: {user_sessions[user_id].session_id}")
     
@@ -364,9 +364,12 @@ async def stop_stream(
     auth: HTTPAuthorizationCredentials = Security(security)
 ):
     """停止正在进行的模型输出流"""
-    global active_streams
+    global active_streams, user_sessions
     logger.info(f"stopping request:{stream_id} in {active_streams}")
-    if not stream_id in active_streams:
+    # 获取用户会话
+    user_id = request.headers.get("X-User-ID", auth.credentials)
+    session = user_sessions.get(user_id)     
+    if not stream_id in active_streams or not session:
         # 如果不在当前的实例中，则直接remove ddb中的数据
         try:
             await delete_stream_id(stream_id=stream_id)
@@ -382,26 +385,12 @@ async def stop_stream(
                 "Expires": "0"
             }
         )
-    
-    try:
-        # 获取用户会话
-        session = await get_or_create_user_session(request, auth)
+    elif session:
         user_id = session.user_id
-        
         # 检查流是否存在且属于当前用户
-        authorized = True
-        if await get_stream_id(stream_id) != user_id:
-            authorized = False
-            
-        saved_user_id = await get_stream_id(stream_id)
-        if saved_user_id:
-            if saved_user_id != user_id:
-                authorized = False
-        else:
-            # 流ID不在活跃列表中，但我们仍然尝试停止它
-            logger.warning(f"Stream {stream_id} not found in active_streams but still trying to stop it")
-        
-        if not authorized:
+        stream_id_result = await get_stream_id(stream_id)
+        if  stream_id_result != user_id:
+            logger.warning(f"Stream {stream_id} not found in user_id:{user_id}, not authorized to stop this stream")
             return JSONResponse(content={"errno": -1, "msg": "Not authorized to stop this stream"})
         
         # 使用BackgroundTasks处理停止流的操作，确保即使客户端断开连接，流也能被正确停止
@@ -411,7 +400,6 @@ async def stop_stream(
                 success = session.chat_client.stop_stream(stream_id)
                 if success:
                     logger.info(f"Successfully initiated stop for stream {stream_id}")
-                    
                     # 在异步任务中安全地更新共享状态
                     try:
                         await delete_stream_id(stream_id=stream_id)
@@ -443,10 +431,6 @@ async def stop_stream(
                 "Expires": "0"
             }
         )
-        
-    except Exception as e:
-        logger.error(f"Error stopping stream {stream_id}: {e}")
-        return JSONResponse(content={"errno": -1, "msg": f"Error stopping stream: {str(e)}"})
 
 # 将stop_router包含在主应用中, 注意这个顺序必须在接口定义之后
 app.include_router(stop_router)
@@ -768,6 +752,7 @@ async def stream_chat_response(data: ChatCompletionRequest, session: UserSession
             keep_session=data.keep_session,
             stream_id=stream_id,
             use_mem=data.use_mem,
+            use_swarm=data.use_swarm
         )
         
         # 创建心跳生成器
@@ -818,22 +803,10 @@ async def stream_chat_response(data: ChatCompletionRequest, session: UserSession
                         # text = ""
                         if not tooluse_start:    
                             tooluse_start = True
-                        #     text = "<tool_input>"
-                        # text += response["data"]["delta"]["toolUse"]['input']
-                        # current_content += text
-                        # event_data["choices"][0]["delta"] = {"content": text}
                         event_data["choices"][0]["delta"] = {"toolinput_content": response["data"]["delta"]["toolUse"]['input']}
                         
                     if "reasoningContent" in response["data"]["delta"]:
                         if 'text' in response["data"]["delta"]["reasoningContent"]:
-                            # if not thinking_start:
-                            #     text = "<thinking>" + response["data"]["delta"]["reasoningContent"]["text"]
-                            #     thinking_start = True
-                            # else:
-                            #     text = response["data"]["delta"]["reasoningContent"]["text"]
-                            # event_data["choices"][0]["delta"] = {"content": text}
-                            # thinking_text_index += 1
-                            
                             event_data["choices"][0]["delta"] = {"reasoning_content": response["data"]["delta"]["reasoningContent"]["text"]}
                             
 
@@ -841,7 +814,6 @@ async def stream_chat_response(data: ChatCompletionRequest, session: UserSession
                     if tooluse_start:
                         tooluse_start = False
                         event_data["choices"][0]["delta"] = {"toolinput_content": "<END>"}
-                #         event_data["choices"][0]["delta"] = {"content": text}
                         
                 elif response["type"] in [ "message_stop" ,"result_pairs"]:
                     event_data["choices"][0]["finish_reason"] = response["data"]["stopReason"]
@@ -851,6 +823,8 @@ async def stream_chat_response(data: ChatCompletionRequest, session: UserSession
                         }
 
                 elif response["type"] == "error":
+                    # 停止心跳任务
+                    heartbeat_stop_event.set()
                     event_data["choices"][0]["finish_reason"] = "error"
                     event_data["choices"][0]["delta"] = {
                         "content": f"Error: {response['data']}"
@@ -863,6 +837,8 @@ async def stream_chat_response(data: ChatCompletionRequest, session: UserSession
                     
                 # 手动停止流式响应
                 if response["type"] == "stopped":
+                    # 立即停止心跳任务
+                    heartbeat_stop_event.set()
                     event_data = {
                         "id": f"stop{time.time_ns()}",
                         "object": "chat.completion.chunk",
@@ -880,6 +856,8 @@ async def stream_chat_response(data: ChatCompletionRequest, session: UserSession
                 
                 # 发送结束标记
                 if response["type"] == "message_stop" and response["data"]["stopReason"] in ['end_turn','max_tokens']:
+                    # 停止心跳任务
+                    heartbeat_stop_event.set()
                     if response["data"]["stopReason"] == 'max_tokens':
                         event_data = {
                             "id": f"stop{time.time_ns()}",
@@ -921,9 +899,6 @@ async def stream_chat_response(data: ChatCompletionRequest, session: UserSession
     finally:
         # 停止心跳任务
         heartbeat_stop_event.set()
-        
-        # save history message 
-        # await session.chat_client.save_history()
         # 清除活跃流列表中的请求
         try:
             if stream_id:
@@ -949,20 +924,35 @@ async def _merge_streams(*streams):
     
     try:
         while stream_tasks:
-            # 等待任何一个流产生结果
+            # 等待任何一个流产生结果，使用较短的超时时间以便更快响应停止信号
             done, pending = await asyncio.wait(
-                [task for task, _ in stream_tasks], 
-                return_when=asyncio.FIRST_COMPLETED
+                [task for task, _ in stream_tasks],
+                return_when=asyncio.FIRST_COMPLETED,
+                timeout=0.1  # 添加超时以便更快响应停止信号
             )
             
             # 处理完成的任务
             new_stream_tasks = []
+            main_stream_ended = False
+            
             for task, stream_iter in stream_tasks:
                 if task in done:
                     try:
                         result = await task
                         if result is not StopAsyncIteration:
                             yield result
+                            # 检查是否是主要流（agent stream）的真正结束信号
+                            # 只有在明确的结束条件下才停止所有流
+                            if isinstance(result, dict):
+                                result_type = result.get("type")
+                                if result_type == "stopped":
+                                    main_stream_ended = True
+                                elif result_type == "message_stop":
+                                    stop_reason = result.get("data", {}).get("stopReason")
+                                    if stop_reason in ['end_turn', 'max_tokens']:
+                                        main_stream_ended = True
+                                elif result_type == "error":
+                                    main_stream_ended = True
                             # 创建新任务来获取下一个值
                             new_task = asyncio.create_task(anext(stream_iter, StopAsyncIteration))
                             new_stream_tasks.append((new_task, stream_iter))
@@ -987,6 +977,11 @@ async def _merge_streams(*streams):
                     new_stream_tasks.append((task, stream_iter))
                     
             stream_tasks = new_stream_tasks
+            
+            # 如果主要流已结束，立即退出循环
+            if main_stream_ended:
+                logger.info("Main stream ended, stopping all streams")
+                break
             
     except Exception as e:
         logger.error(f"Error in _merge_streams: {e}")
