@@ -22,6 +22,7 @@ from custom_tools import mem0_memory
 from strands.telemetry import StrandsTelemetry
 from constant import *
 load_dotenv()  # load environment variables from .env
+from strands_tools import swarm
 
 import base64
 import os
@@ -230,19 +231,26 @@ class StrandsAgentClient(ChatClient):
                                        thinking_budget=4096,
                                        max_tokens=1024,
                                        temperature=0.7,
-                                       use_mem=False):
+                                       use_mem=False,
+                                       use_swarm=False):
         """Create a Strands agent with MCP tools"""
         
         # Create MCP tools
         tools = await self._create_mcp_tools(mcp_clients, mcp_server_ids)
-        logger.info(tools)
+
         # Get the model
         model = self._get_model(model_id,thinking=thinking, thinking_budget=thinking_budget,max_tokens=max_tokens, temperature=temperature)
         
         # 如果配置了PG Database,添加memory tool
         if os.environ.get("POSTGRESQL_HOST") and use_mem:
-            tools = tools + [mem0_memory]
+            tools += [mem0_memory]
             
+        if use_swarm:
+            tools += [swarm]
+        
+        logger.info(f"load tools:{[tool.tool_name for tool in tools]}")
+        # add stop tool
+        # tools += [stop]
         # Create agent
         agent = Agent(
             model=model,
@@ -250,7 +258,7 @@ class StrandsAgentClient(ChatClient):
             conversation_manager = SlidingWindowConversationManager(
                 window_size=window_size,  # Maximum number of message pairs to keep
             ),
-            callback_handler=None,
+            # callback_handler=None,
             system_prompt=system_prompt or "You are a helpful assistant.",
             tools=tools,
             load_tools_from_directory=False
