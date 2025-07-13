@@ -54,7 +54,6 @@ class StrandsAgentClientStream(StrandsAgentClient):
             self.stop_flags[stream_id] = True
             logger.info(f"Stopping stream: {stream_id}")
             return True
-        logger.warning(f"Attempted to stop unknown stream: {stream_id}")
         return False
 
     def unregister_stream(self, stream_id):
@@ -99,6 +98,7 @@ class StrandsAgentClientStream(StrandsAgentClient):
             monitor_thread.join(timeout=1.0)
             del self.monitor_threads[stream_id]
             logger.info(f"Stopped monitor thread for stream: {stream_id}")
+            self._stop_agent_thread(stream_id)
     
     def _start_agent_thread(self, stream_id: str, prompt: str):
         """Start an agent processing thread for the given stream"""
@@ -236,8 +236,9 @@ class StrandsAgentClientStream(StrandsAgentClient):
                 except Exception as e:
                     logger.error(f"Error in monitor thread for stream {stream_id}: {e}")
                 
-                # Wait for 5 seconds before next check (longer interval to reduce load)
-                stop_event.wait(timeout=5.0)
+                # Wait for 3 seconds before next check
+                if stop_event.wait(timeout=3.0):
+                    break  # Stop event was set, exit immediately
                 
         except Exception as e:
             logger.error(f"Monitor thread for stream {stream_id} encountered error: {e}")
@@ -253,11 +254,7 @@ class StrandsAgentClientStream(StrandsAgentClient):
             if current_time - last_yield_time > 0.1:  # 每100ms让出一次控制权，避免阻塞
                 await asyncio.sleep(0.001)
                 last_yield_time = current_time
-            # Check if we need to stop
-            if stream_id and stream_id in self.stop_flags and self.stop_flags[stream_id]:
-                logger.info(f"Stream {stream_id} was requested to stop")
-                yield {"type": "stopped", "data": {"message": "Stream stopped by user request"}}
-                break
+
             if 'message' in chunk:
                 message = chunk['message']
                 if message.get('role') == 'user' and message.get('content'):
@@ -305,7 +302,7 @@ class StrandsAgentClientStream(StrandsAgentClient):
     async def process_query_stream(self,
             model_id="", max_tokens=1024, max_turns=30, temperature=0.1,
             messages=[], system=[], mcp_clients=None, mcp_server_ids=[], extra_params={}, keep_session=None,
-            stream_id: Optional[str] = None, use_mem: bool = False) -> AsyncGenerator[Dict, None]:
+            stream_id: Optional[str] = None, use_mem: bool = False, use_swarm : bool = False) -> AsyncGenerator[Dict, None]:
         """Submit user query or history messages, and get streaming response using Strands Agents SDK."""
         
         logger.info(f'client input message list length:{len(messages)}')
@@ -369,6 +366,7 @@ class StrandsAgentClientStream(StrandsAgentClient):
             max_tokens=max_tokens,
             temperature=temperature,
             use_mem=use_mem,
+            use_swarm=use_swarm
         )
         
         current_content = ""
@@ -403,6 +401,7 @@ class StrandsAgentClientStream(StrandsAgentClient):
                 # Check if stream should stop
                 if stream_id in self.stop_flags and self.stop_flags[stream_id]:
                     logger.info(f"Stream {stream_id} was requested to stop")
+                    # self.agent.tool.stop(reason="User requested to stop")
                     yield {"type": "stopped", "data": {"message": "Stream stopped by user request"}}
                     break
                 
@@ -423,7 +422,9 @@ class StrandsAgentClientStream(StrandsAgentClient):
                 await asyncio.sleep(0.01)
                 # Check if we should continue waiting
                 if stream_id in self.stop_flags and self.stop_flags[stream_id]:
+                    # self.agent.tool.stop(reason="User requested to stop")
                     logger.info(f"Stream {stream_id} timed out and stop flag is set")
+                    yield {"type": "stopped", "data": {"message": "Stream stopped by user request"}}
                     break
                 continue
             except Exception as e:
