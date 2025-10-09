@@ -1,0 +1,34 @@
+你是GenAI的专家架构师，在AI Agent领域有深入的实践经验，帮我写一个python agent代码，基于strands agent的 agent as tool的多agent的实现方式
+
+# 基本信息:
+1. 关于strands agent 的文档已经有提供的工具，你可以通过工具查看strands agent开发文档
+2. 这是一个clickstream方案部署的多agent
+3. clickstream 当前已经提供好的strands tools 文件,在/home/ec2-user/environment/sample_agentic_ai_strands/src/internal_tools 下面所有_tool.py结尾的python文件。 里面都通过@tools 定义了工具, 工具我在我在下面第四条已列出，你只需要查看对应工具的代码内容，不需要看整个代码文件，因为代码很长
+4. 所有clickstream提供的工具为 get_clickstream_architecture_info,create_msk_topics,deploy_alb,deploy_ecs_for_lua,deploy_ecs_for_vector,deploy_nlb,create_msk_iceberg_connector,create_msk_s3_json_connector,build_and_push_nginxlua_and_fluentbit_images,build_and_push_nginx_vector_images,configure_security_groups,test_alb_data_flow,test_nlb_data_flow
+5. 采用strands agent中agent as tools的多agent 架构
+
+
+# clickstream 方案部署的流程，你根据这个流程去设计多agent ,注意优化agent的提示词
+1. 首先这个get_clickstream_architecture_info tool客户获取到方案的架构和不同采集方案的区别，如果用户需要了解方案可以通过这个工具获取方案信息
+2. 用户需要输入MSK的集群名称和需要存储数据的S3 bucket ，后续的部署都需要这两个信息
+3. 让用户选择需要部署clickstream在采集数据上的方案nginx lua 方案，还是nginx vector方案。
+4. create_msk_topics 这个工具用来创建方案所需的topic,无论选择哪种方案，都必选先在MSK创建topic, 如果创建topic成功才能执行后续流程，否则就不要继续后续流程。告诉用户排查topic创建topic失败的原因之后，重新创建。 
+5. build_and_push_nginx_vector_images，build_and_push_nginxlua_and_fluentbit_images 这两个工具分别用来构建采集的nginx vector和nginx lua 镜像，用户选择了方案后，执行构建镜像
+6. deploy_ecs_for_lua,deploy_ecs_for_vector 这两个工具用来部署ECS采集服务，构建完镜像之后，根据构建的镜像选择部署的ecs是lua的还是vector的
+7. deploy_alb,deploy_nlb 这两个工具在部署完ecs之后根据选择的lua和vector方案部署，如果是lua方案部署nlb，如果是vector方案部署alb
+8. configure_security_groups 工具是在方ecs，alb或者nlb, 部署完毕后，进行安全组的配置，确保网络的联通
+9. create_msk_s3_json_connector，create_msk_iceberg_connector 两个工具是将MSK的数据sink到s3的工具，一个存储为json格式，一个存储为iceberg格式，可以让用户选择，这个执行只要topic创建完毕后即可执行，不依赖其他流程
+10. test_alb_data_flow,test_nlb_data_flow 两个工具是分别对nginx vector和nginx lua方案部署后的测试工具代码，部署完毕后可以执行该工具发送数据到接口，验证数据是否能够成功发送。
+
+# agent as tools的设计
+1. 一个orchestrator的agent，负责总体的指导和协调
+2. 上述的所有工具请都设计为一个单独的agent,根据作用写好提示词，由orchestrator agent协调，agent的输出和执行流程
+3. 注意各个agent的提示词的优化
+
+
+请根据以上要求开发这个多基于strans agent的clickstream的多Agent , 生产级别代码要求，另外对于输出不要用print，用log
+
+
+
+
+

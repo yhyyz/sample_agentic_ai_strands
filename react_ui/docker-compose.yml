@@ -15,9 +15,9 @@ services:
     environment:
       - NODE_OPTIONS=--http-parser=legacy --max-http-header-size=16384
     healthcheck:
-      test: ["CMD", "wget", "-qO-", "http://localhost:3000/api/health"]
+      test: ["CMD", "wget", "-qO-", "http://localhost:8081/api/health"]
       interval: 30s
       timeout: 10s
       retries: 3
       start_period: 10s
-    command: ["sh", "-c", "npm run dev"]
+    command: ["sh", "-c", "npm run dev -- --port 8081"]

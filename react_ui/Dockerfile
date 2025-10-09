@@ -48,7 +48,7 @@ ENV UV_THREADPOOL_SIZE=16
 RUN npm run build
 
 # Expose the port the app runs on
-EXPOSE 3000
+EXPOSE 8081
 
 # Command to run the application
-CMD ["npm", "run", "start", "--", "-H", "0.0.0.0"]
+CMD ["npm", "run", "start", "--", "-H", "0.0.0.0", "-p", "8081"]

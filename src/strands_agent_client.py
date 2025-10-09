@@ -19,8 +19,10 @@ from mcp_client_strands import StrandsMCPClient
 from strands.agent.conversation_manager import SlidingWindowConversationManager
 from botocore.config import Config
 from custom_tools import mem0_memory
+from internal_tools import get_tools
 from strands.telemetry import StrandsTelemetry
 from multi_agents.research_swarm import DeepResearchSwarm
+from multi_agents.clickstream_multi_agent import ClickstreamOrchestrator
 
 from constant import *
 load_dotenv()  # load environment variables from .env
@@ -244,7 +246,20 @@ class StrandsAgentClient(ChatClient):
                                     )
         return self.agent
         
-        
+    def _create_clickstream_agent_with_tools(self, 
+                                       model, 
+                                       agent_hooks = [],
+                                       messages = [], 
+                                       tools=[],
+                                       system_prompt=None):
+        """create a clickstream multiple agnet"""
+        if not self.agent or not isinstance(self.agent, Agent):
+            self.agent =  ClickstreamOrchestrator(model=model,
+                                    agent_hooks=agent_hooks,
+                                    tools=tools,
+                                    system_prompt=system_prompt).create_clickstream_orchestrator_agent()
+            
+        return self.agent   
         
     def _create_single_agent_with_tools(self, 
                                        model, 
@@ -279,7 +294,8 @@ class StrandsAgentClient(ChatClient):
         # Create MCP tools
         tools = await self._create_mcp_tools(mcp_clients, mcp_server_ids)
         logger.info(f"load tools:{[tool.tool_name for tool in tools]}")
-
+        # interval tools
+        tools.extend(get_tools())
         # Get the model
         model = self._get_model(model_id,thinking=thinking, thinking_budget=thinking_budget,max_tokens=max_tokens, temperature=temperature)
         
@@ -296,4 +312,8 @@ class StrandsAgentClient(ChatClient):
                                                      messages=messages,
                                                      tools=tools,
                                                      system_prompt=system_prompt)
+            # agent = self._create_clickstream_agent_with_tools(model=model,
+            #                              messages=messages,
+            #                              tools=tools,
+            #                              system_prompt=system_prompt)
         return agent

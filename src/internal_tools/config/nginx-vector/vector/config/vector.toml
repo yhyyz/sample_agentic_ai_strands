@@ -1,0 +1,70 @@
+[sources.nginx_http_post]
+type = "http_server"
+address = "0.0.0.0:8685"
+strict_path = false
+headers = [ "X_Uri", "X_User_Agent", "X_Forwarded_For","X_Remote_Addr", "X_Date", "X_Request_ID", "X_Method", "project", "compression"]
+query_parameters = [ "platform", "fakeIp"]
+method = "POST"
+encoding = "binary"
+
+[transforms.json_parser]
+inputs = ["nginx_http_post"]
+type   = "remap"
+source = '''
+.meta = {}
+.meta.date = del(.X_Date)
+.meta.uri = del(.X_Uri)
+.meta.ua = del(.X_User_Agent)
+if (get_env_var("DEV_MODE") ?? "No") == "Yes" && !is_null(.fakeIp) {
+  .meta.ip = del(.fakeIp)
+} else {
+  .meta.ip = if !is_nullish(.X_Forwarded_For) {
+    .X_Forwarded_For
+  } else {
+    .X_Remote_Addr
+  }
+  del(.X_Forwarded_For)
+  del(.X_Remote_Addr)
+  del(.fakeIp)
+}
+.meta.rid = del(.X_Request_ID)
+.meta.method = del(.X_Method)
+.meta.platform = del(.platform)
+.meta.project = del(.project)
+.meta.ctime = to_unix_timestamp(now()) * 1000
+
+decoded_data, decode_err = decode_base64(.message)
+if decode_err == null {
+  compression = string(.compression) ?? ""
+  decode_res_data = decoded_data
+  if compression == "gzip" {
+      decode_res_data = decode_gzip(decoded_data)  ?? decoded_data
+  }
+  parsed_data, parse_err = parse_json(decode_res_data)
+  if parse_err == null {
+    if is_array(parsed_data) {
+      .data_list = parsed_data
+    } else {
+      .data = parsed_data
+    }
+    .meta.parse_status = "success"
+    .meta.raw = ""
+  } else {
+    .data = {}
+    .data_list = []
+    .meta.parse_status = "json_parse_failed"
+    .meta.raw =  string(.message) ?? ""
+  }
+} else {
+  .data = {}
+  .data_list = []
+  .meta.parse_status = "base64_decode_failed"
+  .meta.raw = string(.message) ?? ""
+}
+
+del(.message)
+del(.path)
+del(.source_type)
+del(.timestamp)
+del(.compression)
+'''
