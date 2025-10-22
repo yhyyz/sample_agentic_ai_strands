@@ -27,6 +27,7 @@ from utils import  (get_global_server_configs,
                     session_lock,
                     DDB_TABLE,
                     save_user_server_config)
+from security import validate_mcp_server_config, SecurityValidationError
 from fastapi.responses import JSONResponse, StreamingResponse
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from fastapi import Security
@@ -249,13 +250,37 @@ async def shutdown_event():
 
 app = FastAPI(lifespan=lifespan)
 
-# 添加CORS中间件支持跨域请求和自定义头
+# SECURITY: Configure CORS with restrictive settings
+# Get allowed origins from environment variable or use localhost defaults
+allowed_origins_env = os.environ.get("ALLOWED_ORIGINS")
+if allowed_origins_env:
+    # Parse comma-separated origins from environment
+    allowed_origins = [origin.strip() for origin in allowed_origins_env.split(",")]
+else:
+    # Default to localhost for development
+    allowed_origins = [
+        "http://localhost:3000",
+        "http://localhost:3001",
+        "http://127.0.0.1:3000",
+        "http://127.0.0.1:3001",
+        "*"
+    ]
+
+logger.info(f"CORS allowed origins: {allowed_origins}")
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # 在生产环境中应限制为特定的前端域名
+    allow_origins=allowed_origins,  # Only allow specific origins
     allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],  # 允许所有头，包括自定义的X-User-ID
+    allow_methods=["GET", "POST", "DELETE"],  # Only allow needed methods
+    allow_headers=[
+        "Content-Type",
+        "Authorization",
+        "X-User-ID",
+        "X-Stream-ID",
+        "Cache-Control"
+    ],  # Only allow specific headers
+    max_age=600,  # Cache preflight requests for 10 minutes
 )
 
 # 配置单独的路由组，确保停止路由不受streaming路由的并发限制影响
@@ -460,7 +485,22 @@ async def add_mcp_server(
     server_script_args = data.args
     server_script_envs = data.env
     server_desc = data.server_desc if data.server_desc else data.server_id
-    
+
+    # SECURITY: Validate inputs before processing
+    try:
+        validate_mcp_server_config(
+            server_id=server_id,
+            command=server_cmd,
+            args=server_script_args,
+            env=server_script_envs
+        )
+    except SecurityValidationError as e:
+        logger.warning(f"Security validation failed for user {user_id}: {e}")
+        return JSONResponse(content=AddMCPServerResponse(
+            errno=-1,
+            msg=f"Security validation failed: {str(e)}"
+        ).model_dump())
+
     # 处理配置JSON
     if data.config_json:
         config_json = data.config_json
@@ -480,7 +520,23 @@ async def add_mcp_server(
         server_script_envs = config_json[server_id].get('env',{})
         http_type= "sse" if is_endpoint_sse(server_url) else "streamable_http"
         token=config_json[server_id].get('token', None)
-        
+
+        # SECURITY: Re-validate after config_json processing
+        if server_cmd and server_script_args:  # Only validate if using stdio (not URL-based)
+            try:
+                validate_mcp_server_config(
+                    server_id=server_id,
+                    command=server_cmd,
+                    args=server_script_args,
+                    env=server_script_envs
+                )
+            except SecurityValidationError as e:
+                logger.warning(f"Security validation failed for config_json from user {user_id}: {e}")
+                return JSONResponse(content=AddMCPServerResponse(
+                    errno=-1,
+                    msg=f"Security validation failed: {str(e)}"
+                ).model_dump())
+
     # 连接MCP服务器
     tool_conf = {}
     try:

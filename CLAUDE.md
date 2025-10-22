@@ -143,6 +143,44 @@ This repository contains an Agentic AI application built using Strands Agents SD
 1. **Development Mode**: Local deployment using `start_all.sh`
 2. **Production Mode**: AWS ECS Fargate deployment using CDK
 
+## Security
+
+**IMPORTANT**: This application has undergone security hardening to fix critical vulnerabilities.
+
+### Key Security Features
+
+1. **Server-Side Authentication**: API keys are never exposed to clients
+2. **Input Validation**: Strict validation prevents command injection attacks
+3. **CORS Protection**: Configurable allowed origins prevent cross-site attacks
+
+### Quick Security Setup
+
+```bash
+# 1. Set a secure API key
+echo "API_KEY=$(openssl rand -hex 32)" >> .env
+
+# 2. Configure allowed origins for production
+echo "ALLOWED_ORIGINS=https://your-domain.com" >> .env
+
+# 3. Review security documentation
+cat SECURITY.md
+```
+
+### Security Documentation
+
+- **SECURITY.md** - Complete security guide and best practices
+- **SECURITY_MIGRATION.md** - Migration guide for existing deployments
+- **src/security.py** - Input validation implementation
+
+### Security Checklist
+
+Before deploying to production:
+- [ ] Change default API_KEY
+- [ ] Configure ALLOWED_ORIGINS with your frontend domain
+- [ ] Use HTTPS (set USE_HTTPS=1)
+- [ ] Store API keys in AWS Secrets Manager (recommended)
+- [ ] Review and test security controls
+
 ## Configuration
 
 ### Backend Configuration
