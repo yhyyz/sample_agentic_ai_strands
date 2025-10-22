@@ -1,5 +1,6 @@
 import { NextApiRequest, NextApiResponse } from 'next';
 import fetch from 'node-fetch';
+import { getApiKey } from '../../lib/server/secrets';
 
 // Base URL for the MCP server backend (internal only)
 // Using localhost works with both direct deployment and Docker with host network mode
@@ -10,16 +11,20 @@ const MCP_BASE_URL = process.env.SERVER_MCP_BASE_URL || 'http://localhost:7002';
 process.env.NODE_TLS_REJECT_UNAUTHORIZED = '0';
 
 // Get standardized headers for backend requests
-export const getBackendHeaders = (req: NextApiRequest) => {
-  // Copy relevant headers from the client request
+// SECURITY: API key is injected server-side and never exposed to clients
+export const getBackendHeaders = async (req: NextApiRequest) => {
+  // Get API key from server-side secure storage
+  const apiKey = await getApiKey();
+
+  if (!apiKey) {
+    throw new Error('API key not configured on server');
+  }
+
+  // Build headers with server-side API key
   const headers: Record<string, string> = {
     'Content-Type': 'application/json',
+    'Authorization': `Bearer ${apiKey}`, // Server-side authentication
   };
-
-  // Forward authorization header if present
-  if (req.headers.authorization) {
-    headers['Authorization'] = req.headers.authorization as string;
-  }
 
   // Forward user ID header if present
   if (req.headers['x-user-id']) {
@@ -38,10 +43,10 @@ export async function proxyGetRequest(
   try {
     // Construct backend URL - use the protocol specified in MCP_BASE_URL
     const url = MCP_BASE_URL + endpoint;
-    
-    // Make the request to the backend
+
+    // Make the request to the backend with server-side auth
     const response = await fetch(url, {
-      headers: getBackendHeaders(req)
+      headers: await getBackendHeaders(req)
     });
 
     // Get response data
@@ -51,7 +56,7 @@ export async function proxyGetRequest(
     res.status(response.status).json(data);
   } catch (error) {
     console.error(`Error in proxy GET request to ${endpoint}:`, error);
-    res.status(500).json({ 
+    res.status(500).json({
       error: 'Failed to proxy request to backend service',
       message: error instanceof Error ? error.message : 'Unknown error'
     });
@@ -67,11 +72,11 @@ export async function proxyPostRequest(
   try {
     // Construct backend URL - use the protocol specified in MCP_BASE_URL
     const url = MCP_BASE_URL + endpoint;
-    
-    // Make the request to the backend
+
+    // Make the request to the backend with server-side auth
     const response = await fetch(url, {
       method: 'POST',
-      headers: getBackendHeaders(req),
+      headers: await getBackendHeaders(req),
       body: JSON.stringify(req.body)
     });
 
@@ -185,11 +190,11 @@ export async function proxyDeleteRequest(
   try {
     // Construct backend URL - use the protocol specified in MCP_BASE_URL
     const url = MCP_BASE_URL + endpoint;
-    
-    // Make the request to the backend
+
+    // Make the request to the backend with server-side auth
     const response = await fetch(url, {
       method: 'DELETE',
-      headers: getBackendHeaders(req)
+      headers: await getBackendHeaders(req)
     });
 
     // Get response data
@@ -199,7 +204,7 @@ export async function proxyDeleteRequest(
     res.status(response.status).json(data);
   } catch (error) {
     console.error(`Error in proxy DELETE request to ${endpoint}:`, error);
-    res.status(500).json({ 
+    res.status(500).json({
       error: 'Failed to proxy request to backend service',
       message: error instanceof Error ? error.message : 'Unknown error'
     });
