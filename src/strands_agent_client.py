@@ -256,6 +256,9 @@ class StrandsAgentClient(ChatClient):
         if not self.agent or not isinstance(self.agent, Agent):
             self.agent =  ClickstreamOrchestrator(model=model,
                                     agent_hooks=agent_hooks,
+                                    conversation_manager=SlidingWindowConversationManager(
+                                        window_size=window_size,  # Maximum number of message pairs to keep
+                                    ),
                                     tools=tools,
                                     system_prompt=system_prompt).create_clickstream_orchestrator_agent()
             
@@ -308,12 +311,12 @@ class StrandsAgentClient(ChatClient):
                                                      tools=tools,
                                                      system_prompt=system_prompt)
         else:
-            agent = self._create_single_agent_with_tools(model=model,
-                                                     messages=messages,
-                                                     tools=tools,
-                                                     system_prompt=system_prompt)
-            # agent = self._create_clickstream_agent_with_tools(model=model,
-            #                              messages=messages,
-            #                              tools=tools,
-            #                              system_prompt=system_prompt)
+            # agent = self._create_single_agent_with_tools(model=model,
+            #                                          messages=messages,
+            #                                          tools=tools,
+            #                                          system_prompt=system_prompt)
+            agent = self._create_clickstream_agent_with_tools(model=model,
+                                         messages=messages,
+                                         tools=tools,
+                                         system_prompt=system_prompt)
         return agent

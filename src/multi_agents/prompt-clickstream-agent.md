@@ -26,7 +26,7 @@
 3. 注意各个agent的提示词的优化
 
 
-请根据以上要求开发这个多基于strans agent的clickstream的多Agent , 生产级别代码要求，另外对于输出不要用print，用log
+请根据以上要求开发这个多基于strans agent的clickstream的多Agent , 生产级别代码
 
 
 

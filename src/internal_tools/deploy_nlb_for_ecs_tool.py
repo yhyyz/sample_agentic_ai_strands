@@ -144,7 +144,7 @@ class NLBDeployer:
                 Filters=[{'Name': 'vpc-id', 'Values': [self.vpc_id]}]
             )
             
-            public_subnets = []
+            az_subnet_map = {}
             
             for subnet in response['Subnets']:
                 # Check if subnet is in ECS AZ
@@ -153,14 +153,17 @@ class NLBDeployer:
                 
                 # Check if subnet is public by examining route tables
                 if self._is_public_subnet(subnet['SubnetId']):
-                    public_subnets.append(subnet['SubnetId'])
-                    logger.info(f"Found public subnet: {subnet['SubnetId']} (AZ: {subnet['AvailabilityZone']})")
+                    az = subnet['AvailabilityZone']
+                    # Only keep one subnet per AZ (first found)
+                    if az not in az_subnet_map:
+                        az_subnet_map[az] = subnet['SubnetId']
+                        logger.info(f"Selected public subnet: {subnet['SubnetId']} (AZ: {az})")
             
-            if not public_subnets:
+            if not az_subnet_map:
                 raise NLBDeploymentError(f"No public subnets found in ECS service availability zones: {self.ecs_azs}")
             
-            self.public_subnets = public_subnets
-            logger.info(f"Selected NLB public subnets: {self.public_subnets}")
+            self.public_subnets = list(az_subnet_map.values())
+            logger.info(f"Final NLB public subnets (one per AZ): {self.public_subnets}")
             
         except ClientError as e:
             raise NLBDeploymentError(f"Failed to get public subnets: {e}")

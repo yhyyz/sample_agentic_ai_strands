@@ -13,7 +13,7 @@ import time
 from datetime import datetime
 from typing import Optional, List, Dict, Any
 
-from .aws_session import create_aws_session
+from internal_tools.aws_session import create_aws_session
 from strands import tool
 
 
@@ -44,10 +44,15 @@ def pull_kafka_image() -> None:
 def run_kafka_command(command: List[str]) -> str:
     """Run Kafka command in Docker container."""
     docker_cmd = ['docker', 'run', '--rm', KAFKA_DOCKER_IMAGE] + command
-    logger.debug(f"Running command: {' '.join(docker_cmd)}")
+    logger.info(f"Running command: {' '.join(docker_cmd)}")
     
-    result = subprocess.run(docker_cmd, check=True, capture_output=True, text=True)
-    return result.stdout.strip()
+    result = subprocess.run(docker_cmd, check=False, capture_output=True, text=True)
+    if result.returncode != 0:
+        msg=f"Running command error: { result.stderr.strip() }"
+        logger.error(msg)
+        raise ValueError(msg)
+    else:
+        return  result.stdout.strip()
 
 
 def get_bootstrap_servers(cluster_name: str, region: str) -> str:
@@ -332,24 +337,13 @@ def create_msk_topics(
         }
     except Exception as e:
         logger.error(f"Failed to create MSK topics: {e}")
-        return {
+        error_res = {
             "success": False,
             "message": f"MSK topics created failed: {e}",
-            "topics": {
-                "app_topic": {
-                    "name": app_topic,
-                    "partitions": app_partitions,                },
-                "control_topic": {
-                    "name": control_topic,
-                    "partitions": control_partitions,
-                }
-            },
-            "cluster_info": {
-                "bootstrap_servers": bootstrap_servers,
-                "region": region,
-                "cluster_name": cluster_name
-            }
+            "topics": {},
+            "cluster_info": {}
         }
+        return error_res
 
 
 def main():
@@ -406,13 +400,17 @@ Description:
 
 
 if __name__ == "__main__":
+
     # Check if this is being run as a test
     if len(sys.argv) == 2 and sys.argv[1] == "--test":
+        #com=['kafka-topics', '--bootstrap-server', 'b-3.standardxlarge.f9l2in.c3.kafka.ap-southeast-1.amazonaws.com:9092', '--list']
+        #print(run_kafka_command(com))
         # Test example - using bootstrap servers directly
         logger.info("Running test example...")
         try:
             # Example usage of the main function
             result = create_msk_topics(
+                cluster_name="test",
                 bootstrap_servers="localhost:9092",  # This would fail but demonstrates usage
                 region="us-east-1",
                 app_topic="test_app_logs",

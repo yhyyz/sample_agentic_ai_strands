@@ -71,7 +71,7 @@ def architecture_info_agent(query: str) -> str:
         
         """
         tools=[get_clickstream_architecture_info]
-        tools.extend(agent_config.tools)
+        # tools.extend(agent_config.tools)
         agent = Agent(
             model=agent_config.model,
             hooks=agent_config.agent_hook,
@@ -97,7 +97,7 @@ def msk_topic_agent(query) -> str:
         - Create required Kafka topics for clickstream data use create_msk_topics tool
         """
         tools=[create_msk_topics]
-        tools.extend(agent_config.tools)
+        # tools.extend(agent_config.tools)
         agent = Agent(
             model=agent_config.model,
             hooks=agent_config.agent_hook,
@@ -141,7 +141,7 @@ def image_builder_agent(solution_type: str, region: str, ecr_repo_name: str) -> 
             tools = [build_and_push_nginxlua_and_fluentbit_images]
         else:
             tools = [build_and_push_nginx_vector_images]
-        tool.sextend(agent_config.tools)
+        # tool.sextend(agent_config.tools)
         agent = Agent(
             model=agent_config.model,
             hooks=agent_config.agent_hook,
@@ -190,7 +190,7 @@ def ecs_deployment_agent(solution_type: str, region: str, cluster_name: str,
             tools = [deploy_ecs_for_lua]
         else:
             tools = [deploy_ecs_service_for_vector]
-        tools.extend(agent_config.tools)
+        # tools.extend(agent_config.tools)
         agent = Agent(
             model=agent_config.model,
             hooks=agent_config.agent_hook,
@@ -236,7 +236,7 @@ def load_balancer_agent(solution_type: str, region: str, **kwargs) -> str:
             tools = [deploy_nlb]
         else:
             tools = [deploy_alb]
-        tools.extend(agent_config.tools)
+        # tools.extend(agent_config.tools)
         agent = Agent(
             model=agent_config.model,
             hooks=agent_config.agent_hook,
@@ -278,7 +278,7 @@ def security_config_agent(region: str, **kwargs) -> str:
         Configure security groups to enable proper data flow while maintaining security.
         """
         tools=[configure_security_groups]
-        tools.extend(agent_config.tools)
+        # tools.extend(agent_config.tools)
         agent = Agent(
             model=agent_config.model,
             hooks=agent_config.agent_hook,
@@ -327,7 +327,7 @@ def data_connector_agent(connector_type: str, region: str, cluster_name: str,
             tools = [create_msk_s3_json_connector]
         else:
             tools = [create_msk_iceberg_connector]
-        tools.extend(agent_config.tools)
+        # tools.extend(agent_config.tools)
         agent = Agent(
             model=agent_config.model,
             hooks=agent_config.agent_hook,
@@ -372,7 +372,7 @@ def testing_agent(solution_type: str, **kwargs) -> str:
             tools = [test_nlb_data_flow]
         else:
             tools = [test_alb_data_flow]
-        tools.extend(agent_config.tools)
+        # tools.extend(agent_config.tools)
         agent = Agent(
             model=agent_config.model,
             hooks=agent_config.agent_hook,
@@ -400,11 +400,13 @@ class ClickstreamOrchestrator:
                  model="us.anthropic.claude-3-7-sonnet-20250219-v1:0",
                  agent_hooks=[],
                  tools=[],
+                 conversation_manager=None,
                  system_prompt=None,
                  callback_handler = None):
         self.callback_handler = callback_handler
         self.model = model
         self.agent_hook = agent_hooks
+        self.conversation_manager=  conversation_manager
         self.tools = tools
         self.system_prompt = system_prompt
         global agent_config
@@ -471,6 +473,7 @@ class ClickstreamOrchestrator:
             hooks=self.agent_hook,
             callback_handler = self.callback_handler,
             system_prompt=self.ORCHESTRATOR_PROMPT,
+            conversation_manager=self.conversation_manager,
             tools=tools
         )
         logger.info("created clickstream agent")
