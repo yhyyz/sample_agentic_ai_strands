@@ -282,11 +282,18 @@ def create_msk_topics(
         pull_kafka_image()
         
         # Manage application topic
-        manage_topic(app_topic, app_partitions, replication_factor, bootstrap_servers, force_recreate)
-        
+        app_topic_res = manage_topic(app_topic, app_partitions, replication_factor, bootstrap_servers, force_recreate)
+        create_topic_msg = ""
+        if app_topic_res:
+            create_topic_msg= "MSK topics created successfully"
+        else:
+            create_topic_msg= "MSK app topic already exists"
         # Manage control topic
-        manage_topic(control_topic, control_partitions, replication_factor, bootstrap_servers, force_recreate)
-        
+        control_topic_res = manage_topic(control_topic, control_partitions, replication_factor, bootstrap_servers, force_recreate)
+        if control_topic_res:
+            create_topic_msg= "MSK topics created successfully"
+        else:
+            create_topic_msg= "MSK control topic already exists"
         # Verify topics
         logger.info("=== Verifying Topics ===")
         logger.info("Application Topic Details:")
@@ -318,7 +325,7 @@ def create_msk_topics(
         # Return creation results
         return {
             "success": True,
-            "message": "MSK topics created successfully",
+            "message": create_topic_msg,
             "topics": {
                 "app_topic": {
                     "name": app_topic,
