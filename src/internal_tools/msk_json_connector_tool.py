@@ -456,6 +456,8 @@ consumer.auto.offset.reset=earliest"""
                 if connector['connectorName'] == connector_name:
                     logger.info(f"Connector '{connector_name}' already exists")
                     self.connector_arn = connector['connectorArn']
+                    self.execution_status = "SUCCESS"
+                    self.error_message = f"Connector '{connector_name}' already exists"
                     return connector['connectorArn']
             
             logger.info(f"Creating S3 JSON connector: {connector_name}")

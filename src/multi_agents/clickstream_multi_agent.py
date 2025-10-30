@@ -447,6 +447,7 @@ class ClickstreamOrchestrator:
         - Data connectors can run independently after topic creation
         - Always validate each step before proceeding
         - For any commands you need to execute, first check if the agent has already provided tools, and if provided, use the agent-provided tools to execute.
+        - If any agent fails to execute, Do not provide any suggestions or commands for users to manually create. Inform the user that this is an agent execution error and to wait for a fix. immediately stop the execution of subsequent agents
 
         Guide users through the process step by step, ensuring prerequisites are met.
         

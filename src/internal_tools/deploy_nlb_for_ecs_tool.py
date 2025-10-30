@@ -450,7 +450,7 @@ class NLBDeployer:
             'target_group_arn': self.target_group_arn,
             'container_name': self.container_name,
             'container_port': self.container_port,
-            'access_url': f"http://{self.nlb_dns}:{self.container_port}",
+            'access_url': f"http://{self.nlb_dns}:{self.container_port}/data/v1",
             'ecs_service_subnets': self.ecs_subnets,
             'nlb_subnets': self.public_subnets,
             'ecs_availability_zones': self.ecs_azs
@@ -494,13 +494,13 @@ class NLBDeployer:
             
             logger.info("=== NLB Deployment Completed! ===")
             logger.info(f"NLB DNS Name: {self.nlb_dns}")
-            logger.info(f"Access URL: http://{self.nlb_dns}:{self.container_port}")
+            logger.info(f"Access URL: http://{self.nlb_dns}:{self.container_port}/data/v1")
             
             return {
                 'nlb_arn': self.nlb_arn,
                 'nlb_dns': self.nlb_dns,
                 'target_group_arn': self.target_group_arn,
-                'access_url': f"http://{self.nlb_dns}:{self.container_port}",
+                'access_url': f"http://{self.nlb_dns}:{self.container_port}/data/v1",
                 'container_port': self.container_port,
                 'deployment_info': deployment_info
             }

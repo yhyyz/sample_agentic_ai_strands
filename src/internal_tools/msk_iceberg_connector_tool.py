@@ -525,6 +525,7 @@ consumer.auto.offset.reset=earliest"""
                 for connector in response['connectors']:
                     if connector['connectorName'] == connector_name:
                         logger.info(f"Connector '{connector_name}' already exists")
+                        self.error_message=f"Connector '{connector_name}' already exists"
                         return connector['connectorArn']
             except Exception:
                 pass
@@ -764,7 +765,8 @@ def create_msk_iceberg_connector(s3_bucket: str,
             "role_name": role_name,
             "role_arn": role_arn,
             "plugin_name": plugin_name,
-            "worker_config_name": worker_config_name
+            "worker_config_name": worker_config_name,
+            "error_message": manager.error_message 
         }
         
     except Exception as e:
